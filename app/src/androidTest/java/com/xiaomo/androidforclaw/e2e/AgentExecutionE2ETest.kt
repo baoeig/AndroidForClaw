@@ -260,7 +260,7 @@ class AgentExecutionE2ETest {
     // ========== 辅助方法 ==========
 
     private fun setupTestConfig() {
-        val configDir = java.io.File("/sdcard/AndroidForClaw/config")
+        val configDir = java.io.File("/sdcard/.androidforclaw/config")
         if (!configDir.exists()) {
             configDir.mkdirs()
         }

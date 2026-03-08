@@ -43,7 +43,7 @@ class AgentIntegrationTest {
     }
 
     private fun setupTestConfig() {
-        val configDir = java.io.File("/sdcard/AndroidForClaw/config")
+        val configDir = java.io.File("/sdcard/.androidforclaw/config")
         if (!configDir.exists()) {
             configDir.mkdirs()
         }
@@ -237,7 +237,7 @@ class AgentIntegrationTest {
 
     @Test
     fun testWorkspace_directoryExists() {
-        val workspaceDir = java.io.File("/sdcard/androidforclaw-workspace")
+        val workspaceDir = java.io.File("/sdcard/.androidforclaw/workspace")
 
         if (!workspaceDir.exists()) {
             workspaceDir.mkdirs()
@@ -250,7 +250,7 @@ class AgentIntegrationTest {
 
     @Test
     fun testWorkspace_skillsDirectoryExists() {
-        val skillsDir = java.io.File("/sdcard/androidforclaw-workspace/skills")
+        val skillsDir = java.io.File("/sdcard/.androidforclaw/workspace/skills")
 
         if (!skillsDir.exists()) {
             skillsDir.mkdirs()
@@ -261,7 +261,7 @@ class AgentIntegrationTest {
 
     @Test
     fun testWorkspace_canCreateFile() {
-        val testFile = java.io.File("/sdcard/androidforclaw-workspace/integration_test.txt")
+        val testFile = java.io.File("/sdcard/.androidforclaw/workspace/integration_test.txt")
 
         try {
             testFile.writeText("Integration test content")
