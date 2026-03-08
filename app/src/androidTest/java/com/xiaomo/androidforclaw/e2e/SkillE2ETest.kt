@@ -15,7 +15,7 @@ import com.xiaomo.androidforclaw.data.model.TaskDataManager
 import com.xiaomo.androidforclaw.ui.activity.MainActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.junit.Before
+import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.Assert.*
@@ -41,26 +41,41 @@ import java.io.File
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class SkillE2ETest {
 
-    private lateinit var device: UiDevice
-    private lateinit var context: Context
-    private lateinit var toolRegistry: AndroidToolRegistry
-    private lateinit var taskDataManager: TaskDataManager
-
     companion object {
         private const val TIMEOUT = 5000L
         private const val PACKAGE_NAME = "com.xiaomo.androidforclaw.debug"
-    }
 
-    @Before
-    fun setup() {
-        device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        context = ApplicationProvider.getApplicationContext<MyApplication>()
-        taskDataManager = TaskDataManager.getInstance()
-        toolRegistry = AndroidToolRegistry(context, taskDataManager)
+        // 静态变量,在所有测试间共享
+        lateinit var device: UiDevice
+        lateinit var context: Context
+        lateinit var toolRegistry: AndroidToolRegistry
+        lateinit var taskDataManager: TaskDataManager
 
-        // 启动应用作为测试环境
-        launchApp()
-        Thread.sleep(1000)
+        @BeforeClass
+        @JvmStatic
+        fun setupOnce() {
+            device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+            context = ApplicationProvider.getApplicationContext<MyApplication>()
+            taskDataManager = TaskDataManager.getInstance()
+            toolRegistry = AndroidToolRegistry(context, taskDataManager)
+
+            // 只启动一次应用,供所有测试使用
+            println("\n🚀 启动应用 - 开始Skill测试套件")
+            println("=" .repeat(60))
+            launchApp()
+            Thread.sleep(1500)
+        }
+
+        @JvmStatic
+        fun launchApp() {
+            val intent = Intent(Intent.ACTION_MAIN).apply {
+                setClassName(PACKAGE_NAME, MainActivity::class.java.name)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+            context.startActivity(intent)
+            device.wait(Until.hasObject(By.pkg(PACKAGE_NAME).depth(0)), TIMEOUT)
+            device.waitForIdle()
+        }
     }
 
     /**
@@ -111,7 +126,8 @@ class SkillE2ETest {
         println("✅ 返回主屏幕成功")
         println()
 
-        // 重新启动应用供后续测试使用
+        // 返回到应用继续测试
+        println("  → 返回应用继续测试...")
         launchApp()
         Thread.sleep(500)
     }
@@ -134,7 +150,8 @@ class SkillE2ETest {
         println("✅ 返回上一页成功")
         println()
 
-        // 重新启动应用
+        // 返回到应用继续测试
+        println("  → 返回应用继续测试...")
         launchApp()
         Thread.sleep(500)
     }
@@ -299,14 +316,5 @@ class SkillE2ETest {
     }
 
     // ========== 辅助方法 ==========
-
-    private fun launchApp() {
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            setClassName(PACKAGE_NAME, MainActivity::class.java.name)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        }
-        context.startActivity(intent)
-        device.wait(Until.hasObject(By.pkg(PACKAGE_NAME).depth(0)), TIMEOUT)
-        device.waitForIdle()
-    }
+    // launchApp 已移至 companion object 作为共享方法
 }

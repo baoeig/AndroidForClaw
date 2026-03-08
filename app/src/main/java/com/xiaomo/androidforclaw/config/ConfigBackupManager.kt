@@ -47,7 +47,12 @@ class ConfigBackupManager(private val context: Context) {
                 return false
             }
 
-            configFile.copyTo(lastKnownGoodFile, overwrite = true)
+            // 先删除旧文件（如果存在），确保复制成功
+            if (lastKnownGoodFile.exists()) {
+                lastKnownGoodFile.delete()
+            }
+
+            configFile.copyTo(lastKnownGoodFile, overwrite = false)
             Log.i(TAG, "✅ 配置已备份到 last-known-good")
             true
         } catch (e: Exception) {
