@@ -32,6 +32,8 @@ import com.xiaomo.androidforclaw.util.MediaProjectionHelper
 import com.xiaomo.androidforclaw.ui.float.SessionFloatWindow
 import com.tencent.mmkv.MMKV
 import com.xiaomo.androidforclaw.util.MMKVKeys
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 检查 S4Claw (observer扩展) 的无障碍服务是否已启用
@@ -299,6 +301,38 @@ fun StatusTab(
     onNavigateToPermissions: () -> Unit,
     onNavigateToSkills: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+
+    // 动态获取 Gateway 状态
+    val gatewayRunning = remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        // 检查 Gateway 端口是否在监听
+        try {
+            val result = withContext(Dispatchers.IO) {
+                java.net.Socket().use { socket ->
+                    socket.connect(java.net.InetSocketAddress("127.0.0.1", 8765), 100)
+                    true
+                }
+            }
+            gatewayRunning.value = result
+        } catch (e: Exception) {
+            gatewayRunning.value = false
+        }
+    }
+
+    // 动态获取 Skills 数量
+    val skillsCount = remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) {
+        try {
+            val loader = com.xiaomo.androidforclaw.agent.skills.SkillsLoader(context)
+            val stats = loader.getStatistics()
+            skillsCount.value = stats.totalSkills
+        } catch (e: Exception) {
+            Log.e("StatusTab", "获取 Skills 数量失败", e)
+            skillsCount.value = 0
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -334,9 +368,9 @@ fun StatusTab(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "未运行",
+                    text = if (gatewayRunning.value) "运行中 (ws://0.0.0.0:8765)" else "未运行",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error
+                    color = if (gatewayRunning.value) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                 )
             }
         }
@@ -355,7 +389,7 @@ fun StatusTab(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "8 个 Skills",
+                    text = if (skillsCount.value > 0) "${skillsCount.value} 个 Skills" else "加载中...",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
