@@ -6,20 +6,28 @@ import com.xiaomo.androidforclaw.agent.memory.TokenEstimator
 import com.xiaomo.androidforclaw.providers.LegacyMessage
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 /**
  * Session Manager - 会话管理器
  * 对齐 OpenClaw 会话管理
  *
+ * 存储格式 (OpenClaw Protocol):
+ * - sessions.json: 元数据索引 {"agent:main:main": {"sessionId":"uuid", "updatedAt":1234567890, "sessionFile":"/path/to/uuid.jsonl", ...}}
+ * - {sessionId}.jsonl: 消息历史 (JSONL, 每行一个事件)
+ *
  * 职责:
  * 1. 管理对话历史记录
- * 2. 持久化会话数据
+ * 2. 持久化会话数据 (JSONL 格式)
  * 3. 自动上下文压缩
  * 4. Token 预算管理
  * 5. 提供会话的创建、获取、保存、清除功能
@@ -31,13 +39,12 @@ class SessionManager(
     companion object {
         private const val TAG = "SessionManager"
         private const val SESSIONS_DIR = "sessions"
-        private const val MAX_HISTORY_MESSAGES = 100  // 最大历史消息数（弃用，使用 token 限制）
+        private const val SESSIONS_INDEX = "sessions.json"
         private const val AUTO_PRUNE_DAYS = 30        // 自动清理 30 天前的会话
     }
 
-    private val gson: Gson = GsonBuilder()
-        .setPrettyPrinting()
-        .create()
+    private val gson: Gson = GsonBuilder().create()  // No pretty printing for JSONL
+    private val gsonPretty: Gson = GsonBuilder().setPrettyPrinting().create()  // For sessions.json index
 
     private val sessionsDir: File = File(workspace, SESSIONS_DIR).apply {
         if (!exists()) {
@@ -46,8 +53,15 @@ class SessionManager(
         }
     }
 
+    private val indexFile: File = File(sessionsDir, SESSIONS_INDEX)
+
     // 内存缓存
     private val sessions = mutableMapOf<String, Session>()
+    private val sessionIndex = mutableMapOf<String, SessionMetadata>()
+
+    init {
+        loadIndex()
+    }
 
     /**
      * 获取或创建会话
@@ -55,12 +69,7 @@ class SessionManager(
     fun getOrCreate(sessionKey: String): Session {
         return sessions.getOrPut(sessionKey) {
             Log.d(TAG, "Creating new session: $sessionKey")
-            loadSession(sessionKey) ?: Session(
-                key = sessionKey,
-                messages = mutableListOf(),
-                createdAt = currentTimestamp(),
-                updatedAt = currentTimestamp()
-            )
+            loadSession(sessionKey) ?: createNewSession(sessionKey)
         }
     }
 
@@ -75,14 +84,27 @@ class SessionManager(
      * 保存会话
      */
     fun save(session: Session) {
+        val nowMs = System.currentTimeMillis()
         session.updatedAt = currentTimestamp()
         sessions[session.key] = session
 
-        // 持久化到文件
+        // 持久化到 JSONL 文件
         try {
-            val sessionFile = getSessionFile(session.key)
-            val json = gson.toJson(session)
-            sessionFile.writeText(json)
+            saveSessionMessages(session)
+
+            // 更新索引
+            val metadata = sessionIndex.getOrPut(session.key) {
+                SessionMetadata(
+                    sessionId = session.sessionId,
+                    updatedAt = nowMs,
+                    sessionFile = getSessionJSONLFile(session.sessionId).absolutePath,
+                    compactionCount = session.compactionCount
+                )
+            }
+            metadata.updatedAt = nowMs
+            metadata.compactionCount = session.compactionCount
+            saveIndex()
+
             Log.d(TAG, "Session saved: ${session.key}")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save session: ${session.key}", e)
@@ -93,8 +115,12 @@ class SessionManager(
      * 清除会话
      */
     fun clear(sessionKey: String) {
-        sessions.remove(sessionKey)
-        getSessionFile(sessionKey).delete()
+        val session = sessions.remove(sessionKey)
+        if (session != null) {
+            getSessionJSONLFile(session.sessionId).delete()
+            sessionIndex.remove(sessionKey)
+            saveIndex()
+        }
         Log.d(TAG, "Session cleared: $sessionKey")
     }
 
@@ -103,18 +129,23 @@ class SessionManager(
      */
     fun clearAll() {
         sessions.clear()
-        sessionsDir.listFiles()?.forEach { it.delete() }
+        sessionIndex.clear()
+        sessionsDir.listFiles()?.forEach {
+            if (it.extension == "jsonl") {
+                it.delete()
+            }
+        }
+        indexFile.delete()
         Log.d(TAG, "All sessions cleared")
     }
 
     /**
-     * 获取所有会话键
+     * 获取所有会话键 (仅返回新格式的 sessions)
      */
     fun getAllKeys(): List<String> {
-        return sessionsDir.listFiles()
-            ?.filter { it.extension == "json" }
-            ?.map { it.nameWithoutExtension }
-            ?: emptyList()
+        loadIndex()
+        // 只返回索引中的 sessions (新格式),忽略旧的 .json 文件
+        return sessionIndex.keys.toList()
     }
 
     /**
@@ -194,16 +225,148 @@ class SessionManager(
 
     // ================ Private Helpers ================
 
+    /**
+     * 创建新会话
+     */
+    private fun createNewSession(sessionKey: String): Session {
+        val sessionId = UUID.randomUUID().toString()
+        val nowMs = System.currentTimeMillis()
+        val timestamp = currentTimestamp()
+
+        val session = Session(
+            key = sessionKey,
+            sessionId = sessionId,
+            messages = mutableListOf(),
+            createdAt = timestamp,
+            updatedAt = timestamp
+        )
+
+        // 写入 JSONL header
+        val jsonlFile = getSessionJSONLFile(sessionId)
+        FileOutputStream(jsonlFile, false).use { out ->
+            val header = mapOf(
+                "type" to "session",
+                "version" to 3,
+                "id" to sessionId,
+                "timestamp" to timestamp,
+                "cwd" to workspace.absolutePath
+            )
+            out.write((gson.toJson(header) + "\n").toByteArray())
+        }
+
+        // 更新索引
+        sessionIndex[sessionKey] = SessionMetadata(
+            sessionId = sessionId,
+            updatedAt = nowMs,
+            sessionFile = jsonlFile.absolutePath,
+            compactionCount = 0
+        )
+        saveIndex()
+
+        return session
+    }
+
+    /**
+     * 加载索引文件
+     */
+    private fun loadIndex() {
+        if (!indexFile.exists()) {
+            return
+        }
+
+        try {
+            val json = indexFile.readText()
+            val jsonObject = JsonParser.parseString(json).asJsonObject
+
+            sessionIndex.clear()
+            for ((key, value) in jsonObject.entrySet()) {
+                val obj = value.asJsonObject
+                sessionIndex[key] = SessionMetadata(
+                    sessionId = obj.get("sessionId").asString,
+                    updatedAt = obj.get("updatedAt").asLong,
+                    sessionFile = obj.get("sessionFile").asString,
+                    compactionCount = obj.get("compactionCount")?.asInt ?: 0
+                )
+            }
+
+            Log.d(TAG, "Index loaded: ${sessionIndex.size} sessions")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load index", e)
+        }
+    }
+
+    /**
+     * 保存索引文件
+     */
+    private fun saveIndex() {
+        try {
+            val jsonObject = JsonObject()
+            for ((key, metadata) in sessionIndex) {
+                val obj = JsonObject()
+                obj.addProperty("sessionId", metadata.sessionId)
+                obj.addProperty("updatedAt", metadata.updatedAt)
+                obj.addProperty("sessionFile", metadata.sessionFile)
+                obj.addProperty("compactionCount", metadata.compactionCount)
+                jsonObject.add(key, obj)
+            }
+
+            Log.d(TAG, "💾 Saving index to: ${indexFile.absolutePath}")
+            indexFile.writeText(gsonPretty.toJson(jsonObject))
+            Log.d(TAG, "✅ Index saved: ${sessionIndex.size} sessions")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to save index: ${e.message}", e)
+        }
+    }
+
+    /**
+     * 加载会话
+     */
     private fun loadSession(sessionKey: String): Session? {
-        val sessionFile = getSessionFile(sessionKey)
-        if (!sessionFile.exists()) {
+        val metadata = sessionIndex[sessionKey] ?: return null
+        val jsonlFile = getSessionJSONLFile(metadata.sessionId)
+
+        if (!jsonlFile.exists()) {
+            Log.w(TAG, "Session JSONL file not found: ${metadata.sessionId}")
             return null
         }
 
         return try {
-            val json = sessionFile.readText()
-            val session = gson.fromJson(json, Session::class.java)
-            Log.d(TAG, "Session loaded: $sessionKey (${session.messages.size} messages)")
+            val messages = mutableListOf<LegacyMessage>()
+            var createdAt = currentTimestamp()
+            var updatedAt = currentTimestamp()
+
+            jsonlFile.forEachLine { line ->
+                if (line.isBlank()) return@forEachLine
+
+                val event = JsonParser.parseString(line).asJsonObject
+                val type = event.get("type")?.asString ?: return@forEachLine
+
+                when (type) {
+                    "session" -> {
+                        createdAt = event.get("timestamp")?.asString ?: createdAt
+                    }
+                    "message" -> {
+                        val role = event.get("role")?.asString ?: return@forEachLine
+                        val content = event.get("content")?.asString ?: ""
+
+                        messages.add(LegacyMessage(
+                            role = role,
+                            content = content
+                        ))
+                    }
+                }
+            }
+
+            val session = Session(
+                key = sessionKey,
+                sessionId = metadata.sessionId,
+                messages = messages,
+                createdAt = createdAt,
+                updatedAt = updatedAt,
+                compactionCount = metadata.compactionCount
+            )
+
+            Log.d(TAG, "Session loaded: $sessionKey (${messages.size} messages)")
             session
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load session: $sessionKey", e)
@@ -211,9 +374,48 @@ class SessionManager(
         }
     }
 
-    private fun getSessionFile(sessionKey: String): File {
-        val safeKey = sessionKey.replace(Regex("[^a-zA-Z0-9_-]"), "_")
-        return File(sessionsDir, "$safeKey.json")
+    /**
+     * 保存会话消息到 JSONL
+     */
+    private fun saveSessionMessages(session: Session) {
+        val jsonlFile = getSessionJSONLFile(session.sessionId)
+
+        try {
+            Log.d(TAG, "💾 Saving session messages to: ${jsonlFile.absolutePath}")
+
+            // 重写整个文件
+            FileOutputStream(jsonlFile, false).use { out ->
+                // 1. Session header
+                val header = mapOf(
+                    "type" to "session",
+                    "version" to 3,
+                    "id" to session.sessionId,
+                    "timestamp" to session.createdAt,
+                    "cwd" to workspace.absolutePath
+                )
+                out.write((gson.toJson(header) + "\n").toByteArray())
+
+                // 2. Messages
+                for (msg in session.messages) {
+                    val event = mapOf(
+                        "type" to "message",
+                        "id" to UUID.randomUUID().toString(),
+                        "role" to msg.role,
+                        "content" to msg.content,
+                        "timestamp" to currentTimestamp()
+                    )
+                    out.write((gson.toJson(event) + "\n").toByteArray())
+                }
+            }
+
+            Log.d(TAG, "✅ Session messages saved: ${session.messages.size} messages to ${jsonlFile.name}")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to save session messages: ${e.message}", e)
+        }
+    }
+
+    private fun getSessionJSONLFile(sessionId: String): File {
+        return File(sessionsDir, "$sessionId.jsonl")
     }
 
     private fun currentTimestamp(): String {
@@ -227,6 +429,7 @@ class SessionManager(
  */
 data class Session(
     val key: String,
+    val sessionId: String,                     // UUID (对齐 OpenClaw)
     var messages: MutableList<LegacyMessage>,
     var createdAt: String,
     var updatedAt: String,
@@ -296,3 +499,13 @@ data class Session(
         totalTokensFresh = false
     }
 }
+
+/**
+ * SessionMetadata - 会话元数据 (对齐 OpenClaw sessions.json)
+ */
+data class SessionMetadata(
+    val sessionId: String,
+    var updatedAt: Long,
+    val sessionFile: String,
+    var compactionCount: Int = 0
+)

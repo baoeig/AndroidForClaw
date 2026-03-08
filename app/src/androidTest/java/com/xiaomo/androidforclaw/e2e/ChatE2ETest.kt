@@ -96,7 +96,11 @@ class ChatE2ETest {
 
             val passedCount = testResults.count { it.passed }
             val totalCount = testResults.size
-            println("总计: $passedCount/$totalCount 通过 (${passedCount * 100 / totalCount}%)")
+            if (totalCount > 0) {
+                println("总计: $passedCount/$totalCount 通过 (${passedCount * 100 / totalCount}%)")
+            } else {
+                println("总计: 0个测试结果被记录")
+            }
             println("=".repeat(70))
         }
     }
@@ -513,11 +517,11 @@ class ChatE2ETest {
             Thread.sleep(300)
 
             // 清空输入框
-            inputBox.clearTextField()
+            inputBox.clear()
             Thread.sleep(200)
 
             // 输入文本
-            inputBox.setText(text)
+            inputBox.text = text
             Thread.sleep(500)
 
             return true
@@ -552,14 +556,14 @@ class ChatE2ETest {
     /**
      * 查找输入框
      */
-    private fun findInputBox(): UiObject? {
+    private fun findInputBox(): androidx.test.uiautomator.UiObject2? {
         return try {
-            // 尝试多种方式查找
-            device.findObject(UiSelector().className("android.widget.EditText"))
-                ?: device.findObject(UiSelector().resourceId("$PACKAGE_NAME:id/et_input"))
-                ?: device.findObject(UiSelector().resourceId("$PACKAGE_NAME:id/input_text"))
-                ?: device.findObject(UiSelector().resourceId("$PACKAGE_NAME:id/chat_input"))
-                ?: device.findObject(UiSelector().descriptionContains("输入"))
+            // 使用UiObject2查找EditText
+            device.findObject(By.clazz("android.widget.EditText").pkg(PACKAGE_NAME))
+                ?: device.findObject(By.res(PACKAGE_NAME, "et_input"))
+                ?: device.findObject(By.res(PACKAGE_NAME, "input_text"))
+                ?: device.findObject(By.res(PACKAGE_NAME, "chat_input"))
+                ?: device.findObject(By.descContains("输入"))
         } catch (e: Exception) {
             null
         }
