@@ -27,7 +27,7 @@ class SkillsMethods(
             SkillInfo(
                 name = name,
                 description = skill.description,
-                source = "loaded", // SkillDocument 没有 source 字段
+                source = skill.source.displayName,
                 autoLoad = skill.metadata.always
             )
         }

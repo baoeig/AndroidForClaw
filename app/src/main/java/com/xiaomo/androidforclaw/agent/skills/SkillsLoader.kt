@@ -248,7 +248,7 @@ class SkillsLoader(private val context: Context) {
                     val content = context.assets.open(skillPath)
                         .bufferedReader().use { it.readText() }
 
-                    val skill = SkillParser.parse(content)
+                    val skill = SkillParser.parse(content).copy(source = SkillSource.BUNDLED)
                     skills[skill.name] = skill
                     count++
 
@@ -290,7 +290,7 @@ class SkillsLoader(private val context: Context) {
 
                 try {
                     val content = skillFile.readText()
-                    val skill = SkillParser.parse(content)
+                    val skill = SkillParser.parse(content).copy(source = SkillSource.MANAGED)
 
                     val isOverride = skills.containsKey(skill.name)
                     skills[skill.name] = skill
@@ -340,7 +340,7 @@ class SkillsLoader(private val context: Context) {
 
                 try {
                     val content = skillFile.readText()
-                    val skill = SkillParser.parse(content)
+                    val skill = SkillParser.parse(content).copy(source = SkillSource.WORKSPACE)
 
                     val isOverride = skills.containsKey(skill.name)
                     skills[skill.name] = skill

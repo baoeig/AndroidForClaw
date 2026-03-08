@@ -46,7 +46,15 @@ data class SkillDocument(
      * Skill 正文内容（Markdown 格式）
      * 这部分会注入到系统提示词中
      */
-    val content: String
+    val content: String,
+
+    /**
+     * Skill 来源
+     * "bundled" - 内置在 assets/skills/
+     * "managed" - 来自 /sdcard/AndroidForClaw/.skills/
+     * "workspace" - 来自 /sdcard/androidforclaw-workspace/skills/
+     */
+    val source: SkillSource = SkillSource.BUNDLED
 ) {
     /**
      * 获取完整内容（带标题）
@@ -91,6 +99,15 @@ data class SkillMetadata(
      */
     val requires: SkillRequires? = null
 )
+
+/**
+ * Skill 来源枚举
+ */
+enum class SkillSource(val displayName: String) {
+    BUNDLED("bundled"),      // assets/skills/
+    MANAGED("managed"),      // /sdcard/AndroidForClaw/.skills/
+    WORKSPACE("workspace")   // /sdcard/androidforclaw-workspace/skills/
+}
 
 /**
  * Skill 依赖要求
