@@ -25,71 +25,13 @@ class ConfigLoader(private val context: Context) {
 
         // 配置文件路径
         private const val CONFIG_DIR = "/sdcard/AndroidForClaw/config"
-        private const val MODELS_CONFIG_FILE = "models.json"
         private const val OPENCLAW_CONFIG_FILE = "openclaw.json"
 
-        // 默认配置（使用 OpenRouter API）
-        private val DEFAULT_MODELS_CONFIG = """
-        {
-          "mode": "merge",
-          "providers": {
-            "anthropic": {
-              "baseUrl": "https://openrouter.ai/api/v1",
-              "apiKey": "${'$'}{ANTHROPIC_API_KEY}",
-              "api": "anthropic-messages",
-              "authHeader": true,
-              "models": [
-                {
-                  "id": "ppio/pa/claude-opus-4-6",
-                  "name": "Claude Opus 4.6",
-                  "reasoning": true,
-                  "input": ["text", "image"],
-                  "cost": {
-                    "input": 15.0,
-                    "output": 75.0,
-                    "cacheRead": 1.5,
-                    "cacheWrite": 18.75
-                  },
-                  "contextWindow": 200000,
-                  "maxTokens": 16384
-                },
-                {
-                  "id": "ppio/pa/claude-sonnet-4-6",
-                  "name": "Claude Sonnet 4.6",
-                  "reasoning": true,
-                  "input": ["text", "image"],
-                  "cost": {
-                    "input": 3.0,
-                    "output": 15.0,
-                    "cacheRead": 0.3,
-                    "cacheWrite": 3.75
-                  },
-                  "contextWindow": 200000,
-                  "maxTokens": 16384
-                },
-                {
-                  "id": "ppio/pa/claude-sonnet-4-5-20250929",
-                  "name": "Claude Sonnet 4.5",
-                  "reasoning": true,
-                  "input": ["text", "image"],
-                  "cost": {
-                    "input": 3.0,
-                    "output": 15.0,
-                    "cacheRead": 0.3,
-                    "cacheWrite": 3.75
-                  },
-                  "contextWindow": 200000,
-                  "maxTokens": 8192
-                }
-              ]
-            }
-          }
-        }
-        """.trimIndent()
 
         // 默认 OpenClaw 配置
         private val DEFAULT_OPENCLAW_CONFIG = """
         {
+          "version": "1.0.0",
           "thinking": {
             "enabled": true,
             "budgetTokens": 10000,
@@ -97,12 +39,68 @@ class ConfigLoader(private val context: Context) {
             "logToFile": false
           },
           "agent": {
+            "name": "androidforclaw",
             "maxIterations": 20,
             "defaultModel": "ppio/pa/claude-opus-4-6",
             "timeout": 300000,
             "retryOnError": true,
             "maxRetries": 3,
             "mode": "exploration"
+          },
+          "models": {
+            "mode": "merge",
+            "providers": {
+              "anthropic": {
+                "baseUrl": "https://openrouter.ai/api/v1",
+                "apiKey": "${'$'}{ANTHROPIC_API_KEY}",
+                "api": "anthropic-messages",
+                "authHeader": true,
+                "models": [
+                  {
+                    "id": "ppio/pa/claude-opus-4-6",
+                    "name": "Claude Opus 4.6",
+                    "reasoning": true,
+                    "input": ["text", "image"],
+                    "cost": {
+                      "input": 15.0,
+                      "output": 75.0,
+                      "cacheRead": 1.5,
+                      "cacheWrite": 18.75
+                    },
+                    "contextWindow": 200000,
+                    "maxTokens": 16384
+                  },
+                  {
+                    "id": "ppio/pa/claude-sonnet-4-6",
+                    "name": "Claude Sonnet 4.6",
+                    "reasoning": true,
+                    "input": ["text", "image"],
+                    "cost": {
+                      "input": 3.0,
+                      "output": 15.0,
+                      "cacheRead": 0.3,
+                      "cacheWrite": 3.75
+                    },
+                    "contextWindow": 200000,
+                    "maxTokens": 16384
+                  },
+                  {
+                    "id": "ppio/pa/claude-sonnet-4-5-20250929",
+                    "name": "Claude Sonnet 4.5",
+                    "reasoning": true,
+                    "input": ["text", "image"],
+                    "cost": {
+                      "input": 3.0,
+                      "output": 15.0,
+                      "cacheRead": 0.3,
+                      "cacheWrite": 3.75
+                    },
+                    "contextWindow": 200000,
+                    "maxTokens": 8192
+                  }
+                ]
+              }
+            }
           },
           "skills": {
             "bundledPath": "assets/skills",
@@ -235,19 +233,16 @@ class ConfigLoader(private val context: Context) {
         .create()
 
     private val configDir = File(CONFIG_DIR)
-    private val modelsConfigFile = File(configDir, MODELS_CONFIG_FILE)
     private val openclawConfigFile = File(configDir, OPENCLAW_CONFIG_FILE)
 
     // 配置缓存
-    private var cachedModelsConfig: ModelsConfig? = null
     private var cachedOpenClawConfig: OpenClawConfig? = null
-    private var modelsConfigCacheValid = false
     private var openclawConfigCacheValid = false
 
     // 热重载支持
     private var fileObserver: FileObserver? = null
     private var hotReloadEnabled = false
-    private var reloadCallback: ((ModelsConfig) -> Unit)? = null
+    private var reloadCallback: ((OpenClawConfig) -> Unit)? = null
 
     /**
      * 加载 OpenClaw 主配置
@@ -299,71 +294,13 @@ class ConfigLoader(private val context: Context) {
         }
     }
 
-    /**
-     * 加载模型配置
-     * 支持缓存，避免重复读取文件
-     */
-    fun loadModelsConfig(): ModelsConfig {
-        // 如果缓存有效，直接返回
-        if (modelsConfigCacheValid && cachedModelsConfig != null) {
-            Log.d(TAG, "返回缓存的模型配置")
-            return cachedModelsConfig!!
-        }
-
-        try {
-            // 确保配置目录存在
-            ensureConfigDir()
-
-            // 如果配置文件不存在，创建默认配置
-            if (!modelsConfigFile.exists()) {
-                Log.i(TAG, "配置文件不存在，创建默认配置: ${modelsConfigFile.absolutePath}")
-                createDefaultConfig()
-            }
-
-            // 读取配置文件
-            val configJson = modelsConfigFile.readText()
-            Log.d(TAG, "读取配置文件: ${modelsConfigFile.absolutePath}")
-
-            // 替换环境变量
-            val processedJson = replaceEnvVars(configJson)
-
-            // 解析 JSON
-            val config = gson.fromJson(processedJson, ModelsConfig::class.java)
-
-            // 验证配置
-            validateConfig(config)
-
-            // 缓存配置
-            cachedModelsConfig = config
-            modelsConfigCacheValid = true
-
-            Log.i(TAG, "✅ 模型配置加载成功: ${config.providers.size} 个 providers")
-            return config
-
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ 模型配置加载失败: ${e.message}", e)
-            // 返回默认配置
-            val defaultConfig = getDefaultModelsConfig()
-            cachedModelsConfig = defaultConfig
-            modelsConfigCacheValid = true
-            return defaultConfig
-        }
-    }
 
     /**
      * 获取指定 provider 的配置
      */
     fun getProviderConfig(providerName: String): ProviderConfig? {
-        // 优先从 openclaw.json 读取 providers
         val openClawConfig = loadOpenClawConfig()
-        val provider = openClawConfig.providers[providerName]
-        if (provider != null) {
-            return provider
-        }
-
-        // 向后兼容：如果 openclaw.json 中没有，尝试从 models.json 读取
-        val modelsConfig = loadModelsConfig()
-        return modelsConfig.providers[providerName]
+        return openClawConfig.providers[providerName]
     }
 
     /**
@@ -378,7 +315,7 @@ class ConfigLoader(private val context: Context) {
      * 列出所有可用的模型
      */
     fun listAllModels(): List<Pair<String, ModelDefinition>> {
-        val config = loadModelsConfig()
+        val config = loadOpenClawConfig()
         val models = mutableListOf<Pair<String, ModelDefinition>>()
 
         config.providers.forEach { (providerName, provider) ->
@@ -394,17 +331,8 @@ class ConfigLoader(private val context: Context) {
      * 根据模型 ID 查找对应的 provider 名称
      */
     fun findProviderByModelId(modelId: String): String? {
-        // 优先从 openclaw.json 读取 providers
         val openClawConfig = loadOpenClawConfig()
         openClawConfig.providers.forEach { (providerName, provider) ->
-            if (provider.models.any { it.id == modelId }) {
-                return providerName
-            }
-        }
-
-        // 向后兼容：如果 openclaw.json 中没找到，尝试从 models.json 查找
-        val modelsConfig = loadModelsConfig()
-        modelsConfig.providers.forEach { (providerName, provider) ->
             if (provider.models.any { it.id == modelId }) {
                 return providerName
             }
@@ -412,21 +340,6 @@ class ConfigLoader(private val context: Context) {
         return null
     }
 
-    /**
-     * 保存配置
-     */
-    fun saveModelsConfig(config: ModelsConfig): Boolean {
-        return try {
-            ensureConfigDir()
-            val json = gson.toJson(config)
-            modelsConfigFile.writeText(json)
-            Log.i(TAG, "✅ 配置保存成功: ${modelsConfigFile.absolutePath}")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ 配置保存失败: ${e.message}", e)
-            false
-        }
-    }
 
     /**
      * 保存 OpenClaw 配置
@@ -446,14 +359,6 @@ class ConfigLoader(private val context: Context) {
         }
     }
 
-    /**
-     * 重新加载模型配置（用于热重载）
-     */
-    fun reloadConfig(): ModelsConfig {
-        Log.i(TAG, "重新加载模型配置...")
-        modelsConfigCacheValid = false
-        return loadModelsConfig()
-    }
 
     /**
      * 重新加载 OpenClaw 配置（用于热重载）
@@ -470,7 +375,7 @@ class ConfigLoader(private val context: Context) {
      *
      * @param callback 配置重新加载后的回调函数
      */
-    fun enableHotReload(callback: ((ModelsConfig) -> Unit)? = null) {
+    fun enableHotReload(callback: ((OpenClawConfig) -> Unit)? = null) {
         if (hotReloadEnabled) {
             Log.d(TAG, "配置热重载已启用")
             return
@@ -486,18 +391,11 @@ class ConfigLoader(private val context: Context) {
             fileObserver = object : FileObserver(configDir, MODIFY or CREATE or DELETE) {
                 override fun onEvent(event: Int, path: String?) {
                     when (path) {
-                        MODELS_CONFIG_FILE -> {
-                            Log.i(TAG, "检测到模型配置文件变化: $path")
-                            Log.i(TAG, "自动重新加载模型配置...")
-                            val newConfig = reloadConfig()
-                            reloadCallback?.invoke(newConfig)
-                        }
                         OPENCLAW_CONFIG_FILE -> {
                             Log.i(TAG, "检测到 OpenClaw 配置文件变化: $path")
                             Log.i(TAG, "自动重新加载 OpenClaw 配置...")
-                            reloadOpenClawConfig()
-                            // OpenClaw 配置变化时，也可能需要通知调用者
-                            // 如果需要，可以添加一个单独的回调
+                            val newConfig = reloadOpenClawConfig()
+                            reloadCallback?.invoke(newConfig)
                         }
                     }
                 }
@@ -548,13 +446,6 @@ class ConfigLoader(private val context: Context) {
         }
     }
 
-    /**
-     * 创建默认模型配置文件
-     */
-    private fun createDefaultConfig() {
-        modelsConfigFile.writeText(DEFAULT_MODELS_CONFIG)
-        Log.i(TAG, "✅ 创建默认模型配置文件")
-    }
 
     /**
      * 创建默认 OpenClaw 配置文件
@@ -636,48 +527,6 @@ class ConfigLoader(private val context: Context) {
         return null
     }
 
-    /**
-     * 验证配置
-     */
-    private fun validateConfig(config: ModelsConfig) {
-        require(config.mode in listOf("merge", "replace")) {
-            "配置 mode 必须是 'merge' 或 'replace'"
-        }
-
-        config.providers.forEach { (providerName, provider) ->
-            require(provider.baseUrl.isNotBlank()) {
-                "Provider '$providerName' 的 baseUrl 不能为空"
-            }
-
-            require(provider.models.isNotEmpty()) {
-                "Provider '$providerName' 必须至少包含一个模型"
-            }
-
-            provider.models.forEach { model ->
-                require(model.id.isNotBlank()) {
-                    "Provider '$providerName' 中的模型 id 不能为空"
-                }
-                require(model.name.isNotBlank()) {
-                    "Provider '$providerName' 中的模型 '$model.id' 的 name 不能为空"
-                }
-                require(model.contextWindow > 0) {
-                    "模型 '${model.id}' 的 contextWindow 必须大于 0"
-                }
-                require(model.maxTokens > 0) {
-                    "模型 '${model.id}' 的 maxTokens 必须大于 0"
-                }
-            }
-        }
-
-        Log.i(TAG, "✅ 配置验证通过")
-    }
-
-    /**
-     * 获取默认模型配置
-     */
-    private fun getDefaultModelsConfig(): ModelsConfig {
-        return gson.fromJson(DEFAULT_MODELS_CONFIG, ModelsConfig::class.java)
-    }
 
     /**
      * 获取默认 OpenClaw 配置
@@ -742,6 +591,34 @@ class ConfigLoader(private val context: Context) {
         // Logging 配置验证
         require(config.logging.level in listOf("DEBUG", "INFO", "WARN", "ERROR")) {
             "Logging level 必须是 'DEBUG', 'INFO', 'WARN' 或 'ERROR'"
+        }
+
+        // Providers 配置验证 (从 config.providers 读取)
+        if (config.providers.isNotEmpty()) {
+            config.providers.forEach { (providerName, provider) ->
+                require(provider.baseUrl.isNotBlank()) {
+                    "Provider '$providerName' 的 baseUrl 不能为空"
+                }
+
+                require(provider.models.isNotEmpty()) {
+                    "Provider '$providerName' 必须至少包含一个模型"
+                }
+
+                provider.models.forEach { model ->
+                    require(model.id.isNotBlank()) {
+                        "Provider '$providerName' 中的模型 id 不能为空"
+                    }
+                    require(model.name.isNotBlank()) {
+                        "Provider '$providerName' 中的模型 '${model.id}' 的 name 不能为空"
+                    }
+                    require(model.contextWindow > 0) {
+                        "模型 '${model.id}' 的 contextWindow 必须大于 0"
+                    }
+                    require(model.maxTokens > 0) {
+                        "模型 '${model.id}' 的 maxTokens 必须大于 0"
+                    }
+                }
+            }
         }
 
         // Feishu Channel 配置验证

@@ -11,6 +11,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -544,14 +545,8 @@ fun SettingsTab(
         // 悬浮窗开关
         FloatWindowSwitch()
 
-        // 版本信息
-        Spacer(modifier = Modifier.weight(1f))
-        Text(
-            text = "AndroidForClaw v2.4.3",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
+        // 关于
+        AboutCard()
     }
 }
 
@@ -593,6 +588,238 @@ fun FloatWindowSwitch() {
                 }
             )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AboutCard() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // 获取版本信息
+    val packageInfo = remember {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        } catch (e: Exception) {
+            null
+        }
+    }
+    val versionName = packageInfo?.versionName ?: "Unknown"
+    val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+        packageInfo?.longVersionCode?.toString() ?: "Unknown"
+    } else {
+        @Suppress("DEPRECATION")
+        packageInfo?.versionCode?.toString() ?: "Unknown"
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // 标题
+            Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "关于",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "关于",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+
+            Divider()
+
+            // 版本信息
+            InfoRow(
+                label = "版本",
+                value = "$versionName ($versionCode)"
+            )
+
+            // 作者信息
+            InfoRow(
+                label = "作者",
+                value = "xiaomo",
+                onClick = null
+            )
+
+            // 微信
+            InfoRow(
+                label = "微信",
+                value = "xiaomocn",
+                onClick = {
+                    // 复制到剪贴板
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("WeChat ID", "xiaomocn")
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(context, "微信号已复制", Toast.LENGTH_SHORT).show()
+                }
+            )
+
+            // 邮箱
+            InfoRow(
+                label = "邮箱",
+                value = "xiaomochn@gmail.com",
+                onClick = {
+                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                        data = Uri.parse("mailto:xiaomochn@gmail.com")
+                    }
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // 复制到剪贴板
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("Email", "xiaomochn@gmail.com")
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "邮箱已复制", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+
+            Divider()
+
+            // 社区链接
+            Text(
+                text = "加入社区",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            // 飞书群
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    val feishuUrl = "https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=566r8836-6547-43e0-b6be-d6c4a5b12b74"
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(feishuUrl))
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "无法打开链接", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Group,
+                        contentDescription = "飞书群",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "加入飞书群",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "体验 AI 手机控制，参与社区讨论",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+
+            // GitHub
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    val githubUrl = "https://github.com/xiaomochn/AndroidForClaw"
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(githubUrl))
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "无法打开链接", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Code,
+                        contentDescription = "GitHub"
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "GitHub 仓库",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text(
+                            text = "查看源码、提交 Issue、参与贡献",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+
+            Divider()
+
+            // 版权信息
+            Text(
+                text = "© 2024-2025 AndroidForClaw\nInspired by OpenClaw",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun InfoRow(
+    label: String,
+    value: String,
+    onClick: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                }
+            )
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (onClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 

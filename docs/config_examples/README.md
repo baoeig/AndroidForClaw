@@ -4,31 +4,44 @@
 
 ## 文件说明
 
-### models.json
-
-模型配置文件，定义 LLM 提供商和模型。
-
-**设备路径**: `/sdcard/AndroidForClaw/config/models.json`
-
-**包含的提供商**:
-- **openrouter**: OpenRouter API (Claude Sonnet/Opus 4.6)
-- **anthropic**: Anthropic API (Claude Opus/Sonnet 4.6/4.5)
-
-**配置项**:
-- `baseUrl`: API 端点
-- `apiKey`: API 密钥（支持环境变量 `${VAR_NAME}`）
-- `api`: API 类型 (openai-completions, anthropic-messages)
-- `models`: 模型列表（id, name, reasoning, cost, contextWindow, maxTokens）
-
 ### openclaw.json
 
-应用主配置文件，控制 Agent 行为和功能开关。
+唯一配置文件，包含所有配置：Agent、Models、Skills、Tools、Gateway 等。
 
 **设备路径**: `/sdcard/AndroidForClaw/config/openclaw.json`
 
 **主要配置块**:
 
-#### 1. thinking (推理配置)
+#### 1. models (模型配置)
+```json
+{
+  "mode": "merge",
+  "providers": {
+    "anthropic": {
+      "baseUrl": "https://api.anthropic.com/v1",
+      "apiKey": "${ANTHROPIC_API_KEY}",
+      "api": "anthropic",
+      "models": [
+        {
+          "id": "claude-opus-4-6",
+          "name": "Claude Opus 4.6",
+          "reasoning": true,
+          "contextWindow": 200000,
+          "maxTokens": 16384
+        }
+      ]
+    }
+  }
+}
+```
+
+**配置项**:
+- `baseUrl`: API 端点
+- `apiKey`: API 密钥（支持环境变量 `${VAR_NAME}`）
+- `api`: API 类型 (openai-completions, anthropic)
+- `models`: 模型列表（id, name, reasoning, cost, contextWindow, maxTokens）
+
+#### 2. thinking (推理配置)
 ```json
 {
   "enabled": true,              // 启用 Extended Thinking
@@ -38,7 +51,7 @@
 }
 ```
 
-#### 2. agent (Agent 配置)
+#### 3. agent (Agent 配置)
 ```json
 {
   "maxIterations": 20,                      // 最大迭代次数
@@ -50,7 +63,7 @@
 }
 ```
 
-#### 3. skills (技能系统)
+#### 4. skills (技能系统)
 ```json
 {
   "bundledPath": "assets/skills",                        // 内置技能
@@ -63,13 +76,13 @@
 }
 ```
 
-#### 4. tools (工具配置)
+#### 5. tools (工具配置)
 - **screenshot**: 截图工具 (质量、分辨率、格式)
 - **accessibility**: 无障碍服务 (手势、UI 树)
 - **exec**: 命令执行 (超时、黑名单)
 - **browser**: 浏览器工具
 
-#### 5. gateway (网关配置)
+#### 6. gateway (网关配置)
 ```json
 {
   "enabled": true,
@@ -85,25 +98,25 @@
 }
 ```
 
-#### 6. ui (界面配置)
+#### 7. ui (界面配置)
 - **floatingWindow**: 悬浮窗设置
 - **theme**: 主题 (auto/light/dark)
 - **language**: 语言
 
-#### 7. logging (日志配置)
+#### 8. logging (日志配置)
 - **level**: 日志级别
 - **logToFile**: 记录到文件
 - **logPath**: 日志路径
 - **logLLMCalls**: 记录 LLM 调用
 - **logToolCalls**: 记录工具调用
 
-#### 8. memory (记忆配置)
+#### 9. memory (记忆配置)
 - **enabled**: 启用记忆
 - **path**: 记忆存储路径
 - **autoSave**: 自动保存
 - **maxEntries**: 最大条目数
 
-#### 9. session (会话配置)
+#### 10. session (会话配置)
 - **storagePath**: 会话存储路径
 - **autoSave**: 自动保存
 - **maxMessages**: 最大消息数
@@ -118,7 +131,6 @@
 adb shell mkdir -p /sdcard/AndroidForClaw/config
 
 # 推送配置文件
-adb push models.json /sdcard/AndroidForClaw/config/
 adb push openclaw.json /sdcard/AndroidForClaw/config/
 ```
 

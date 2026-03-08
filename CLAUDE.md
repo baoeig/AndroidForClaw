@@ -26,7 +26,7 @@
 
 **对齐指南**:
 - ✅ **核心架构**: Agent Loop, Skills System, Tools Registry 必须对齐
-- ✅ **配置系统**: models.json, openclaw.json 格式必须一致
+- ✅ **配置系统**: openclaw.json 格式必须一致
 - ✅ **Skills 格式**: AgentSkills.io 兼容格式
 - ⚠️ **Android 特有**: Accessibility, MediaProjection 等 Android 特有功能是合理的,不要死搬
 - 📋 **对照表**: 参考 [MAPPING.md](MAPPING.md) 快速找到对应实现
@@ -93,9 +93,6 @@
 - **UI 配置**: theme, language, floatingWindow
 - **Logging 配置**: level, logToFile, logPath
 
-**注意**:
-- `models.json` 仅用于向后兼容,不推荐使用
-- 新项目应将所有配置放在 `openclaw.json` 中
 
 ### 配置格式
 
@@ -368,7 +365,6 @@ metadata:
 /sdcard/AndroidForClaw/               ← 应用数据目录
 ├── config/                           ← 配置文件
 │   ├── openclaw.json                 ← 主配置
-│   └── models.json                   ← 模型 providers
 └── .skills/                          ← 托管技能 (未来)
 ```
 
@@ -654,7 +650,6 @@ if (result.success) {
 
 ~/file/forclaw/phoneforclaw/  ← Git 仓库
 └── config/
-    └── models.json.example   ← 配置模板
 ```
 
 ### 文档创建原则
