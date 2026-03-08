@@ -1,0 +1,9 @@
+rootProject.name = "AndroidForClaw"
+include ':app'
+include ':quickjs-executor'
+include ':extensions:feishu'
+include ':extensions:discord'
+include ':extensions:observer'
+include ':self-control'
+// 移除：新架构不再使用 LangChain4j
+// include ':langchain4j-android'

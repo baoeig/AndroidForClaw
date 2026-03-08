@@ -1,0 +1,51 @@
+{
+  "gateway": {
+    "feishu": {
+      "enabled": false,
+      "appId": "",
+      "appSecret": "",
+      "encryptKey": null,
+      "verificationToken": null,
+      "domain": "feishu",
+      "connectionMode": "websocket",
+      "dmPolicy": "pairing",
+      "allowFrom": [],
+      "groupPolicy": "allowlist",
+      "groupAllowFrom": [],
+      "requireMention": true,
+      "groupCommandMentionBypass": "never",
+      "allowMentionlessInMultiBotGroup": false,
+      "topicSessionMode": "disabled",
+      "historyLimit": 20,
+      "dmHistoryLimit": 100,
+      "textChunkLimit": 4000,
+      "chunkMode": "length",
+      "mediaMaxMb": 20.0,
+      "audioMaxDurationSec": 300,
+      "enableDocTools": true,
+      "enableWikiTools": true,
+      "enableDriveTools": true,
+      "enableBitableTools": true,
+      "enableTaskTools": true,
+      "enableChatTools": true,
+      "enablePermTools": true,
+      "enableUrgentTools": true,
+      "typingIndicator": true,
+      "reactionDedup": true,
+      "debugMode": false
+    },
+    "discord": {
+      "enabled": false,
+      "token": "",
+      "name": "AndroidForClaw Bot",
+      "dm": {
+        "policy": "pairing",
+        "allowFrom": []
+      },
+      "groupPolicy": "allowlist",
+      "guilds": {},
+      "replyToMode": "off",
+      "accounts": {}
+    }
+  }
+}

@@ -1,0 +1,38 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source code
+*.java text diff=java
+*.kt text diff=kotlin
+*.xml text diff=html
+*.gradle text diff=java
+*.properties text
+*.md text diff=markdown
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mov binary
+*.mp4 binary
+*.mp3 binary
+*.gz binary
+*.zip binary
+*.7z binary
+*.ttf binary
+*.eot binary
+*.woff binary
+*.woff2 binary
+*.jar binary
+*.so binary
+*.apk binary
+*.aab binary
+
+# Android specific
+*.keystore binary
+*.jks binary
+
+# Documentation
+*.pdf binary

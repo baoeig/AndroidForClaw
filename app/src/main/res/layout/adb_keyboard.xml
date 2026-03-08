@@ -1,0 +1,24 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:background="#444"
+    android:orientation="vertical"
+    android:padding="8dp">
+    <TextView        
+        android:layout_width="wrap_content"
+    	android:layout_height="wrap_content"
+    	android:text="@string/keyboard_on"
+    	android:layout_gravity="center_horizontal"
+    	android:textColor="#fff"
+    	android:layout_marginBottom="8dp"
+    />
+    <Button
+        android:id="@+id/btn_switch_normal_ime"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="@string/switch_to_normal_keyboard"
+        android:background="#007bff"
+        android:textColor="#ffffff"
+        android:layout_marginTop="8dp"/>
+</LinearLayout>

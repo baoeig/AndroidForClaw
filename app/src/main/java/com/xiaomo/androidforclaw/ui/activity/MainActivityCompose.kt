@@ -1,0 +1,598 @@
+package com.xiaomo.androidforclaw.ui.activity
+
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.xiaomo.androidforclaw.service.PhoneAccessibilityService
+import com.xiaomo.androidforclaw.ui.compose.ChatScreen
+import com.xiaomo.androidforclaw.ui.viewmodel.ChatViewModel
+import com.xiaomo.androidforclaw.util.ChatBroadcastReceiver
+import com.xiaomo.androidforclaw.util.MediaProjectionHelper
+import com.xiaomo.androidforclaw.ui.float.SessionFloatWindow
+import com.tencent.mmkv.MMKV
+import com.xiaomo.androidforclaw.util.MMKVKeys
+
+/**
+ * MainActivity - Compose 版本
+ *
+ * 包含三个Tab：
+ * 1. 对话 - AI 助手聊天界面
+ * 2. 状态 - 系统状态卡片
+ * 3. 设置 - 配置和测试入口
+ */
+class MainActivityCompose : ComponentActivity() {
+
+    companion object {
+        private const val TAG = "MainActivityCompose"
+        private const val REQUEST_MANAGE_EXTERNAL_STORAGE = 1001
+    }
+
+    private var chatBroadcastReceiver: ChatBroadcastReceiver? = null
+    private var chatViewModel: ChatViewModel? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        // 检查并请求文件管理权限
+        checkAndRequestStoragePermission()
+
+        setContent {
+            // 保存 ViewModel 引用以供 BroadcastReceiver 使用
+            val viewModel: ChatViewModel = viewModel()
+            chatViewModel = viewModel
+
+            MaterialTheme {
+                MainScreen(
+                    chatViewModel = viewModel,
+                    onNavigateToPermissions = {
+                        startActivity(Intent(this, PermissionsActivity::class.java))
+                    },
+                    onNavigateToSkills = {
+                        startActivity(Intent(this, SkillsActivity::class.java))
+                    },
+                    onNavigateToConfig = {
+                        Log.d("MainActivityCompose", "点击了模型配置")
+                        try {
+                            startActivity(Intent(this, ConfigActivity::class.java))
+                            Log.d("MainActivityCompose", "成功启动 ConfigActivity")
+                        } catch (e: Exception) {
+                            Log.e("MainActivityCompose", "启动 ConfigActivity 失败", e)
+                        }
+                    },
+                    onNavigateToTest = {
+                        // AgentTestActivity已移除
+                        Toast.makeText(this, "Agent测试功能已废弃", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+        }
+
+        // 注册 ADB 测试接口
+        registerChatBroadcastReceiver()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 主页面可见时通知悬浮窗管理器
+        SessionFloatWindow.setMainActivityVisible(true, this)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // 主页面不可见时通知悬浮窗管理器
+        SessionFloatWindow.setMainActivityVisible(false, this)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterChatBroadcastReceiver()
+    }
+
+    /**
+     * 注册 Chat Broadcast Receiver
+     *
+     * 注意：使用 RECEIVER_EXPORTED 以支持 ADB 测试
+     */
+    private fun registerChatBroadcastReceiver() {
+        chatBroadcastReceiver = ChatBroadcastReceiver { message ->
+            Log.d(TAG, "📨 [BroadcastReceiver] 收到消息: $message")
+            chatViewModel?.sendMessage(message)
+        }
+
+        val filter = ChatBroadcastReceiver.createIntentFilter()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Log.i(TAG, "✅ 注册 ChatBroadcastReceiver (EXPORTED, SDK >= 33)")
+            registerReceiver(chatBroadcastReceiver, filter, RECEIVER_EXPORTED)
+        } else {
+            Log.i(TAG, "✅ 注册 ChatBroadcastReceiver (SDK < 33)")
+            registerReceiver(chatBroadcastReceiver, filter)
+        }
+    }
+
+    /**
+     * 注销 Chat Broadcast Receiver
+     */
+    private fun unregisterChatBroadcastReceiver() {
+        chatBroadcastReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+    }
+
+    /**
+     * 检查并请求文件管理权限
+     */
+    private fun checkAndRequestStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+ 需要 MANAGE_EXTERNAL_STORAGE 权限
+            if (!Environment.isExternalStorageManager()) {
+                // Debug版本跳过权限请求页面,避免跳转Settings导致Activity进入后台影响测试
+                if (com.draco.ladb.BuildConfig.SKIP_PERMISSION_REQUEST) {
+                    Log.w(TAG, "⚠️ DEBUG模式: 文件管理权限未授予,但跳过请求页面")
+                    Log.w(TAG, "   配置文件读写可能失败,请手动授予权限")
+                    return
+                }
+
+                Log.i(TAG, "文件管理权限未授予，请求权限...")
+                try {
+                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                    intent.data = Uri.parse("package:$packageName")
+                    startActivityForResult(intent, REQUEST_MANAGE_EXTERNAL_STORAGE)
+                } catch (e: Exception) {
+                    Log.e(TAG, "无法打开文件管理权限设置页面", e)
+                    // 降级到通用设置页面
+                    try {
+                        val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                        startActivityForResult(intent, REQUEST_MANAGE_EXTERNAL_STORAGE)
+                    } catch (e2: Exception) {
+                        Log.e(TAG, "无法打开文件管理权限设置", e2)
+                    }
+                }
+            } else {
+                Log.i(TAG, "✅ 文件管理权限已授予")
+            }
+        } else {
+            // Android 10 及以下使用传统权限
+            Log.i(TAG, "Android 10 及以下，使用传统存储权限")
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == REQUEST_MANAGE_EXTERNAL_STORAGE) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (Environment.isExternalStorageManager()) {
+                    Log.i(TAG, "✅ 文件管理权限已授予")
+                } else {
+                    Log.w(TAG, "⚠️ 文件管理权限未授予，配置文件读取可能失败")
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreen(
+    chatViewModel: ChatViewModel,
+    onNavigateToPermissions: () -> Unit,
+    onNavigateToSkills: () -> Unit,
+    onNavigateToConfig: () -> Unit,
+    onNavigateToTest: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                MainTab.values().forEachIndexed { index, tab ->
+                    NavigationBarItem(
+                        icon = { Icon(tab.icon, contentDescription = tab.title) },
+                        label = { Text(tab.title) },
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index }
+                    )
+                }
+            }
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.padding(paddingValues)) {
+            when (selectedTab) {
+                0 -> ChatTab(chatViewModel)
+                1 -> StatusTab(
+                    onNavigateToPermissions = onNavigateToPermissions,
+                    onNavigateToSkills = onNavigateToSkills
+                )
+                2 -> SettingsTab(onNavigateToConfig, onNavigateToTest)
+            }
+        }
+    }
+}
+
+enum class MainTab(val title: String, val icon: ImageVector) {
+    CHAT("对话", Icons.Default.Chat),
+    STATUS("状态", Icons.Default.Dashboard),
+    SETTINGS("设置", Icons.Default.Settings)
+}
+
+@Composable
+fun ChatTab(chatViewModel: ChatViewModel) {
+    val messages by chatViewModel.messages.collectAsState()
+    val isLoading by chatViewModel.isLoading.collectAsState()
+    val sessions by chatViewModel.sessions.collectAsState()
+    val currentSession by chatViewModel.currentSession.collectAsState()
+
+    ChatScreen(
+        messages = messages,
+        onSendMessage = { message ->
+            chatViewModel.sendMessage(message)
+        },
+        isLoading = isLoading,
+        sessions = sessions,
+        currentSession = currentSession,
+        onSessionChange = { sessionId ->
+            chatViewModel.switchSession(sessionId)
+        },
+        onNewSession = {
+            chatViewModel.createNewSession()
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StatusTab(
+    onNavigateToPermissions: () -> Unit,
+    onNavigateToSkills: () -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "AndroidForClaw",
+            style = MaterialTheme.typography.headlineMedium
+        )
+
+        Text(
+            text = "AI 移动自动化平台",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 权限卡片
+        PermissionsCard(onClick = onNavigateToPermissions)
+
+        // Gateway 卡片
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = "Gateway",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "未运行",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+
+        // Skills 卡片
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onNavigateToSkills
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = "Skills",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "8 个 Skills",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PermissionsCard(onClick: () -> Unit) {
+    val accessibility = PhoneAccessibilityService.isAccessibilityServiceEnabled()
+    // 这里简化处理，实际应该从context获取
+    val overlay = true // Settings.canDrawOverlays(context)
+    val screenCapture = MediaProjectionHelper.isMediaProjectionGranted()
+
+    val allGranted = accessibility && overlay && screenCapture
+    val grantedCount = listOf(accessibility, overlay, screenCapture).count { it }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "权限",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = if (allGranted) "已授权" else "已授予 $grantedCount/3 个权限",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (allGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "无障碍: ${if (accessibility) "✓" else "✗"}  " +
+                        "悬浮窗: ${if (overlay) "✓" else "✗"}  " +
+                        "录屏: ${if (screenCapture) "✓" else "✗"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsTab(
+    onNavigateToConfig: () -> Unit,
+    onNavigateToTest: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "设置",
+            style = MaterialTheme.typography.headlineMedium
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 配置按钮
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                android.util.Log.d("SettingsTab", "卡片被点击了")
+                onNavigateToConfig()
+            }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "配置"
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(
+                        text = "模型配置",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "配置 API Key 和模型参数",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // Channels 按钮
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                val intent = Intent(context, ChannelListActivity::class.java)
+                context.startActivity(intent)
+            }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Channels"
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(
+                        text = "Channels",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "配置多渠道接入（飞书等）",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // 查看 openclaw.json
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                val openclawJsonPath = "/sdcard/AndroidForClaw/config/openclaw.json"
+                val file = java.io.File(openclawJsonPath)
+                if (file.exists()) {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW)
+                        val uri = androidx.core.content.FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.provider",
+                            file
+                        )
+                        intent.setDataAndType(uri, "text/plain")
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        context.startActivity(Intent.createChooser(intent, "选择文本编辑器"))
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "无法打开文件: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    android.widget.Toast.makeText(context, "文件不存在: $openclawJsonPath", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Description,
+                    contentDescription = "openclaw.json"
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(
+                        text = "openclaw.json",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "查看 OpenClaw 配置文件",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "/sdcard/AndroidForClaw/config/openclaw.json",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        fontSize = 10.sp
+                    )
+                }
+            }
+        }
+
+        // 测试按钮
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onNavigateToTest
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "测试"
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(
+                        text = "Agent Test",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "Execute Agent Task",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // 悬浮窗开关
+        FloatWindowSwitch()
+
+        // 版本信息
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = "AndroidForClaw v2.4.3",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+    }
+}
+
+@Composable
+fun FloatWindowSwitch() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val mmkv = remember { MMKV.defaultMMKV() }
+    var isEnabled by remember {
+        mutableStateOf(mmkv.decodeBool(MMKVKeys.FLOAT_WINDOW_ENABLED.key, false))
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "会话悬浮窗",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "在后台显示会话信息",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Switch(
+                checked = isEnabled,
+                onCheckedChange = { enabled ->
+                    isEnabled = enabled
+                    SessionFloatWindow.setEnabled(context, enabled)
+                }
+            )
+        }
+    }
+}
+

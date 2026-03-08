@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "agent": {
+    "name": "androidforclaw",
+    "defaultModel": "claude-opus-4-6",
+    "maxIterations": 50
+  },
+  "thinking": {
+    "enabled": true,
+    "budgetTokens": 10000
+  },
+  "skills": {
+    "bundledPath": "assets://skills/",
+    "workspacePath": "/sdcard/AndroidForClaw/workspace/skills/",
+    "autoLoad": ["mobile-operations"]
+  },
+  "gateway": {
+    "enabled": false,
+    "port": 8080,
+    "security": {
+      "requirePairing": true,
+      "allowlist": []
+    }
+  }
+}

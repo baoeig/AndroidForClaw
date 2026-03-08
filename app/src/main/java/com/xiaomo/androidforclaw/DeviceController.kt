@@ -1,0 +1,237 @@
+package com.xiaomo.androidforclaw
+
+import android.accessibilityservice.AccessibilityService
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
+import android.util.Log
+import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.Toast
+import android.graphics.BitmapFactory
+import com.xiaomo.androidforclaw.accessibility.AccessibilityProxy
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+
+object DeviceController {
+    private val TAG = "agent1Controller"
+
+
+    /** Capture a screenshot of the device via AccessibilityProxy */
+    val workPath = "/sdcard/Download/agent/"
+    fun getScreenshot(context: Context): Pair<Bitmap, String>? {
+        return runBlocking {
+            try {
+                val path = AccessibilityProxy.captureScreen()
+                if (path.isNotEmpty()) {
+                    val bitmap = BitmapFactory.decodeFile(path)
+                    if (bitmap != null) {
+                        Pair(bitmap, path)
+                    } else {
+                        Log.e(TAG, "无法解码截图: $path")
+                        null
+                    }
+                } else {
+                    Log.w(TAG, "截图失败：路径为空")
+                    null
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "截图失败", e)
+                null
+            }
+        }
+    }
+
+    // 判断当前启用的输入法是否是 ADB Keyboard
+    fun isAdbKeyboardActive(context: Context): Boolean {
+        val currentInputMethod = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.DEFAULT_INPUT_METHOD
+        )
+        // 3. 检查ADB输入法是否在启用列表中
+        val adbInputMethodName =
+            "${context.packageName}/com.xiaomo.androidforclaw.service.AdbIME" // ADB输入法的名称，根据实际情况修改
+        return currentInputMethod == adbInputMethodName || currentInputMethod.contains("adbkeyboard")
+    }
+
+    // 判断当前焦点是否在输入框上
+    fun findFocusedEditText(service: AccessibilityService): AccessibilityNodeInfo? {
+        val rootNode = service.rootInActiveWindow ?: return null
+        return rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+    }
+
+
+    // 综合判断：是否 ADB 键盘 + 焦点在输入框
+    fun isAdbKeyboardVisible(service: AccessibilityService, context: Context): Boolean {
+        val focusedNode = findFocusedEditText(service)
+        val isAdbIme = isAdbKeyboardActive(context)
+        Log.d("ADB键盘判断", "是否焦点在EditText: ${focusedNode != null}")
+        return focusedNode != null && isAdbIme
+    }
+
+
+    // todo 截屏和抓tree 放到一起 delay合并到一起
+    fun detectIcons(context: Context): Pair<List<ViewNode>, List<ViewNode>>? {
+        // 检查无障碍服务是否连接
+        if (!AccessibilityProxy.isServiceReady()) {
+            Log.w(TAG, "无障碍服务未就绪")
+            return null
+        }
+
+        return runBlocking {
+            try {
+                Log.d(TAG, "detectIcons: dumpView via AIDL")
+                var dumpView = AccessibilityProxy.dumpViewTree(useCache = false)
+
+                // 最多重试 3 次
+                var retryCount = 0
+                while (dumpView.isEmpty() && retryCount < 3) {
+                    Log.d(TAG, "detectIcons: retry $retryCount")
+                    Thread.sleep(500)
+                    dumpView = AccessibilityProxy.dumpViewTree(useCache = false)
+                    retryCount++
+                }
+
+                if (dumpView.isEmpty()) {
+                    Log.w(TAG, "无法获取 UI 树（已重试 $retryCount 次）")
+                    return@runBlocking null
+                }
+
+                // 克隆原始数据
+                val originalNodes = dumpView.map { it.copy() }
+
+                // 经过完整处理的数据
+                val processedNodes = processHierarchy(dumpView)
+
+                Pair(originalNodes, processedNodes)
+            } catch (e: Exception) {
+                Log.e(TAG, "获取 UI 树失败", e)
+                null
+            }
+        }
+    }
+
+
+    fun removeEmptyNodes(nodes: List<ViewNode>): List<ViewNode> {
+        return nodes.filter { !it.text.isNullOrEmpty() || !it.contentDesc.isNullOrEmpty() }
+    }
+
+    fun filterDuplicateNodes(nodes: List<ViewNode>): List<ViewNode> {
+        val seenTexts = mutableSetOf<String>()
+        val result = mutableListOf<ViewNode>()
+        nodes.forEach { node ->
+            node.text = node.text ?: node.contentDesc!!
+            val text = node.text ?: node.contentDesc!!
+            if (text !in seenTexts) {
+                seenTexts.add(text)
+                result.add(node)
+            } else if (node.clickable) {
+                // todo 需要移除不可点击的干扰项
+                seenTexts.add(text)
+                result.add(node)
+            }
+        }
+        return result
+    }
+
+
+    fun processHierarchy(xmlString: List<ViewNode>): List<ViewNode> {
+        // 解析节点
+        xmlString.forEach {
+            Log.d(TAG, "processHierarchy: $it")
+        }
+        var nodes = xmlString
+
+        // 移除 text 为空的节点
+        nodes = removeEmptyNodes(nodes)
+
+        // 去除重复文本的节点
+        nodes = filterDuplicateNodes(nodes)
+        nodes = nodes.reversed()
+        nodes = filterDuplicateNodes(nodes)
+        nodes = nodes.reversed()
+
+        // 计算中心点
+        return nodes
+    }
+
+    /** Simulate a tap on the screen at coordinates (x, y) via Accessibility gesture. */
+    fun tap(x: Int, y: Int) {
+        runBlocking {
+            AccessibilityProxy.tap(x, y)
+        }
+    }
+
+    /** Simulate a swipe from (x1, y1) to (x2, y2) via Accessibility gesture. */
+    fun swipe(x1: Int, y1: Int, x2: Int, y2: Int, durationMs: Long = 500) {
+        runBlocking {
+            AccessibilityProxy.swipe(x1, y1, x2, y2, durationMs)
+        }
+    }
+
+    /** Input text into the currently focused element (e.g., an input box). */
+
+    fun inputText(text: String, context: Context) {
+        val intent = Intent()
+        intent.setAction("ADB_INPUT_TEXT")
+        intent.putExtra("msg", text)
+        intent.putExtra("mcode", "0,66");
+        context.sendBroadcast(intent)
+        // 延迟一下再发送（确保文字输入完成）
+        Handler(Looper.getMainLooper()).postDelayed({
+            val intent2 = Intent()
+            intent2.setAction("ADB_SEND_MESSAGE")
+            context.sendBroadcast(intent2)
+        }, 100)
+
+    }
+
+    fun sendText(text: String, context: Context) {
+        val intent = Intent()
+        intent.setAction("ADB_INPUT_TEXT")
+        intent.putExtra("msg", text)
+        context.sendBroadcast(intent)
+
+    }
+
+    /** Simulate a Back button press. */
+    fun pressBack() {
+        AccessibilityProxy.pressBack()
+    }
+
+    /** Return to the Home screen. */
+    fun pressHome() {
+        AccessibilityProxy.pressHome()
+    }
+
+    // 已移除ADB依赖，不再提供shell命令执行
+
+
+}
+
+data class ViewNode(
+    val index: Int,
+    var text: String?,
+    val resourceId: String?,
+    val className: String?,
+    val packageName: String?,
+    val contentDesc: String?,
+    val clickable: Boolean,
+    val enabled: Boolean,
+    val focusable: Boolean,
+    val focused: Boolean,
+    val scrollable: Boolean,
+    val point: Point,
+    val left: Int,
+    val right: Int,
+    val top: Int,
+    val bottom: Int,
+    @Transient
+    val node: AccessibilityNodeInfo? = null
+)
+
+data class Point(val x: Int, val y: Int)

@@ -1,0 +1,60 @@
+package com.xiaomo.androidforclaw.agent.tools
+
+import android.util.Log
+import com.xiaomo.androidforclaw.accessibility.AccessibilityProxy
+import com.xiaomo.androidforclaw.providers.FunctionDefinition
+import com.xiaomo.androidforclaw.providers.ParametersSchema
+import com.xiaomo.androidforclaw.providers.ToolDefinition
+
+/**
+ * Home Skill
+ * 按下 Home 键返回主屏幕
+ */
+class HomeSkill : Skill {
+    companion object {
+        private const val TAG = "HomeSkill"
+    }
+
+    override val name = "home"
+    override val description = "按下 Home 键返回主屏幕。用于退出当前应用回到桌面。"
+
+    override fun getToolDefinition(): ToolDefinition {
+        return ToolDefinition(
+            type = "function",
+            function = FunctionDefinition(
+                name = name,
+                description = description,
+                parameters = ParametersSchema(
+                    type = "object",
+                    properties = emptyMap(),
+                    required = emptyList()
+                )
+            )
+        )
+    }
+
+    override suspend fun execute(args: Map<String, Any?>): SkillResult {
+        if (!AccessibilityProxy.isConnected.value!!) {
+            return SkillResult.error("Accessibility service not connected")
+        }
+
+        Log.d(TAG, "Pressing home button")
+        return try {
+            val success = AccessibilityProxy.pressHome()
+            if (!success) {
+                return SkillResult.error("Home button press failed")
+            }
+
+            // 等待桌面启动器加载
+            kotlinx.coroutines.delay(300)
+
+            SkillResult.success(
+                "Home button pressed (waited 300ms for launcher)",
+                mapOf("wait_time_ms" to 300)
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Home button press failed", e)
+            SkillResult.error("Home button press failed: ${e.message}")
+        }
+    }
+}

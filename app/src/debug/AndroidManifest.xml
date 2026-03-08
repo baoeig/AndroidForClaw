@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:installLocation="internalOnly">
+
+    <!-- Debug版本 - 开发和测试使用 -->
+    
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <!-- 基础权限 -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    
+    <!-- 存储权限 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_INTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    
+    <!-- 服务权限 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <queries>
+        <!-- Add package queries here if needed -->
+    </queries>
+
+    <application
+        android:name="com.xiaomo.androidforclaw.core.MyApplication"
+        android:banner="@drawable/banner"
+        android:extractNativeLibs="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:requestLegacyExternalStorage="true"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.PhoneForClaw"
+        android:debuggable="true"
+        tools:replace="android:debuggable">
+
+
+
+        <!-- 主页 - 状态展示 (旧版，已废弃) -->
+        <activity
+            android:name="com.xiaomo.androidforclaw.ui.activity.MainActivity"
+            android:exported="false"
+            android:label="PhoneForClaw Debug (Legacy)"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar"
+            tools:replace="android:exported" />
+
+        <!-- 配置页面 -->
+        <activity
+            android:name="com.xiaomo.androidforclaw.ui.activity.ConfigActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
+        <!-- Skills 管理页面 -->
+        <activity
+            android:name="com.xiaomo.androidforclaw.ui.activity.SkillsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
+        <!-- Agent 测试页面 -->
+        <activity
+            android:name="com.xiaomo.androidforclaw.ui.activity.AgentTestActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
+        <!-- 权限管理页面 -->
+        <activity
+            android:name="com.xiaomo.androidforclaw.ui.activity.PermissionsActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
+        <!-- QuickJS 测试页面 -->
+        <activity
+            android:name="com.xiaomo.androidforclaw.ui.activity.QuickJSTestActivity"
+            android:exported="true"
+            android:label="QuickJS Test"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- 前台服务（保活） -->
+        <service
+            android:name="com.xiaomo.androidforclaw.core.ForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync|mediaProjection"
+            tools:replace="android:exported,android:foregroundServiceType" />
+            
+        <!-- 无障碍服务 -->
+        <service
+            android:name="com.xiaomo.androidforclaw.service.PhoneAccessibilityService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+        
+        <!-- ADB输入法服务 -->
+        <service
+            android:name="com.xiaomo.androidforclaw.service.AdbIME"
+            android:exported="false"
+            android:permission="android.permission.BIND_INPUT_METHOD"
+            tools:replace="android:exported">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/methods" />
+        </service>
+
+
+            
+
+        <!-- AI测试Activity -->
+        <activity android:name="com.xiaomo.androidforclaw.ui.activity.AITestActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+        
+        <!-- Web服务 -->
+        <service
+            android:name="com.xiaomo.androidforclaw.service.WebService"
+            android:enabled="true"
+            android:exported="false"
+            tools:replace="android:exported" />
+
+        <!-- Agent 消息接收器 -->
+        <receiver
+            android:name="com.xiaomo.androidforclaw.core.AgentMessageReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="com.xiaomo.androidforclaw.ACTION_EXECUTE_AGENT" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 文件提供者 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
+    </application>
+
+</manifest> 

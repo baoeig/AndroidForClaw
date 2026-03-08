@@ -1,0 +1,103 @@
+# Gradle
+.gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+**/build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Local configuration
+local.properties
+
+# Android Studio / IntelliJ IDEA
+*.iml
+.idea/
+*.ipr
+*.iws
+.idea_modules/
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# 密钥文件
+*.keystore
+*.jks
+!test.keystore
+keystore.properties
+
+# 构建产物
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Android build artifacts
+/app/release
+/captures
+.externalNativeBuild
+.cxx
+*.so
+
+# Lint
+lint-results.html
+lint-results.xml
+
+# Node modules (for UI/Web)
+node_modules/
+ui/node_modules/
+ui/dist/
+package-lock.json
+yarn.lock
+
+# 临时文件
+*.log
+*.tmp
+*.bak
+*~
+*.swp
+*.swo
+
+# 测试产物
+/app/src/test/
+*.hprof
+
+# 配置文件（包含敏感信息）
+/app/src/main/assets/config/
+config.properties
+openclaw.json
+models.json
+config/openclaw.json
+config/models.json
+
+# 参考项目
+nanobot/
+OpenClaw/
+
+# 本地工作区
+workspace/
+.workspace/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 清理临时文件
+.cleanup_list
+.claude/worktrees/skill
