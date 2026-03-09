@@ -107,8 +107,8 @@ class ConfigLoader(private val context: Context) {
             // Replace environment variables
             val processedJson = replaceEnvVars(configJson)
 
-            // Parse JSON
-            val config = gson.fromJson(processedJson, OpenClawConfig::class.java)
+            // Parse JSON using JSONObject (avoid GSON default value issues)
+            val config = parseOpenClawConfigFromJson(processedJson)
 
             // Validate config
             validateOpenClawConfig(config)
@@ -277,6 +277,121 @@ class ConfigLoader(private val context: Context) {
     }
 
     // ============ Private Methods ============
+
+    /**
+     * 从 JSON 字符串手动解析 OpenClawConfig
+     * 避免 GSON 的默认值问题 (boolean 字段缺失时会用 false 而非代码默认值)
+     */
+    private fun parseOpenClawConfigFromJson(json: String): OpenClawConfig {
+        val jsonObj = org.json.JSONObject(json)
+
+        // 先用 GSON 解析大部分配置
+        val config = gson.fromJson(json, OpenClawConfig::class.java)
+
+        // 手动解析 providers,确保 authHeader 默认为 true
+        val providersMap = mutableMapOf<String, ProviderConfig>()
+
+        // 优先从 models.providers 读取
+        if (jsonObj.has("models") && jsonObj.getJSONObject("models").has("providers")) {
+            val providersJson = jsonObj.getJSONObject("models").getJSONObject("providers")
+            providersJson.keys().forEach { providerName ->
+                val providerJson = providersJson.getJSONObject(providerName)
+                val provider = parseProviderConfig(providerJson)
+                providersMap[providerName] = provider
+            }
+        }
+        // 否则从 providers 读取
+        else if (jsonObj.has("providers")) {
+            val providersJson = jsonObj.getJSONObject("providers")
+            providersJson.keys().forEach { providerName ->
+                val providerJson = providersJson.getJSONObject(providerName)
+                val provider = parseProviderConfig(providerJson)
+                providersMap[providerName] = provider
+            }
+        }
+
+        // 更新 config 的 models.providers
+        if (config.models != null && providersMap.isNotEmpty()) {
+            return config.copy(
+                models = config.models.copy(providers = providersMap)
+            )
+        }
+
+        return config
+    }
+
+    /**
+     * 手动解析 ProviderConfig,给 authHeader 默认值 true
+     */
+    private fun parseProviderConfig(json: org.json.JSONObject): ProviderConfig {
+        val baseUrl = json.getString("baseUrl")
+        val apiKey = json.optString("apiKey", null)
+        val api = json.optString("api", "openai-completions")
+        val auth = json.optString("auth", null)
+
+        // 关键: authHeader 默认为 true (GSON 缺失时会用 false)
+        val authHeader = json.optBoolean("authHeader", true)
+
+        val headers = if (json.has("headers")) {
+            val headersJson = json.getJSONObject("headers")
+            headersJson.keys().asSequence().associateWith { headersJson.getString(it) }
+        } else null
+
+        val injectNumCtxForOpenAICompat = json.optBoolean("injectNumCtxForOpenAICompat", false)
+
+        // 解析 models 数组
+        val modelsArray = json.getJSONArray("models")
+        val models = mutableListOf<ModelDefinition>()
+        for (i in 0 until modelsArray.length()) {
+            val modelJson = modelsArray.getJSONObject(i)
+            val model = parseModelDefinition(modelJson, api)
+            models.add(model)
+        }
+
+        return ProviderConfig(
+            baseUrl = baseUrl,
+            apiKey = apiKey,
+            api = api,
+            auth = auth,
+            authHeader = authHeader,
+            headers = headers,
+            injectNumCtxForOpenAICompat = if (injectNumCtxForOpenAICompat) true else null,
+            models = models
+        )
+    }
+
+    /**
+     * 手动解析 ModelDefinition
+     */
+    private fun parseModelDefinition(json: org.json.JSONObject, defaultApi: String): ModelDefinition {
+        val id = json.getString("id")
+        val name = json.getString("name")
+        val reasoning = json.optBoolean("reasoning", false)
+        val contextWindow = json.optInt("contextWindow", 4096)
+        val maxTokens = json.optInt("maxTokens", 2048)
+        val api = json.optString("api", defaultApi)
+
+        val input: List<String> = if (json.has("input")) {
+            val inputArray = json.getJSONArray("input")
+            List(inputArray.length()) { inputArray.getString(it) }
+        } else listOf("text")
+
+        val headers = if (json.has("headers")) {
+            val headersJson = json.getJSONObject("headers")
+            headersJson.keys().asSequence().associateWith { headersJson.getString(it) }
+        } else null
+
+        return ModelDefinition(
+            id = id,
+            name = name,
+            reasoning = reasoning,
+            input = input,
+            contextWindow = contextWindow,
+            maxTokens = maxTokens,
+            api = api,
+            headers = headers
+        )
+    }
 
     /**
      * 确保配置目录存在
