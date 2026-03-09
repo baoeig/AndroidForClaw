@@ -91,14 +91,6 @@ No computer needed. No Gateway needed. No pairing needed. Install the APK, grant
 - ✅ **App List** — Get all installed applications
 - ✅ **System Navigation** — Home / Back / Recent Tasks
 
-#### 🖥️ Terminal & Development
-- ✅ **Basic Shell** — Built-in shell commands for file operations
-- 🚧 **Termux Integration** — Full-featured terminal environment (in development)
-  - Complete Linux command-line tools (git, python, node, etc.)
-  - Package manager support (apt, pkg)
-  - SSH server for remote access
-  - Development environment on mobile
-
 #### 🔥 Any App Control (Core Difference!)
 
 Through Accessibility Service, any app you can manually operate, AI can operate:
