@@ -41,6 +41,7 @@
 - ✅ **Bootstrap 配置** — 完整的 IDENTITY / AGENTS / SOUL / TOOLS 配置体系
 - ✅ **Memory 持久化** — 长期记忆，跨会话保留重要信息
 - ✅ **Skill 扩展** — 自定义技能目录，灵活扩展 Agent 能力
+- ✅ **ClawHub 集成** — 原生支持从 ClawHub 发现和安装技能 (npm 待实现)
 - ✅ **多模型支持** — Claude / GPT / Gemini 等主流 LLM
 - ✅ **Exploration 模式** — 动态决策，AI 自主探索
 - ✅ **Planning 模式** — 先规划后执行，适合固定流程
@@ -111,6 +112,29 @@
 #### 🧪 应用测试
 - ✅ 功能测试 / UI 测试 / 回归测试 / 探索测试
 - ✅ 每步操作自动截图留证
+
+#### 🎁 ClawHub 集成（独有特性！）
+
+原生支持 ClawHub 技能市场：
+
+- **🔍 搜索技能**: `skills.search` - 从 ClawHub 发现技能
+- **📥 安装技能**: `skills.install` - 一键从 ClawHub 或 URL 安装
+- **🔄 更新技能**: `skills.update` - 保持技能最新
+- **📋 技能状态**: 完整查看 已安装/内置/可用 技能
+- **🔒 锁文件**: `skill.lock.json` 追踪已安装版本
+
+**示例**:
+```bash
+# 搜索 Twitter 技能
+curl -X POST http://手机IP:8080/gateway \
+  -d '{"method":"skills.search","params":{"query":"twitter"}}'
+
+# 从 ClawHub 安装技能
+curl -X POST http://手机IP:8080/gateway \
+  -d '{"method":"skills.install","params":{"source":"clawhub://twitter"}}'
+```
+
+*📦 npm 仓库支持即将到来！*
 
 ---
 

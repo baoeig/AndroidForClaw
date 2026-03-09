@@ -41,6 +41,7 @@ No computer needed. No Gateway needed. No pairing needed. Install the APK, grant
 - ✅ **Bootstrap Config** — Complete IDENTITY / AGENTS / SOUL / TOOLS configuration system
 - ✅ **Memory Persistence** — Long-term memory, retains important information across sessions
 - ✅ **Skill Extensions** — Custom skill directory, flexible Agent capability expansion
+- ✅ **ClawHub Integration** — Native support for discovering and installing skills from ClawHub (npm coming soon)
 - ✅ **Multi-Model Support** — Claude / GPT / Gemini and other mainstream LLMs
 - ✅ **Exploration Mode** — Dynamic decision-making, AI autonomously explores
 - ✅ **Planning Mode** — Plan first, execute later, suitable for fixed workflows
@@ -111,6 +112,29 @@ Chain multiple apps for complex tasks:
 #### 🧪 App Testing
 - ✅ Functional testing / UI testing / Regression testing / Exploratory testing
 - ✅ Auto screenshot for every operation
+
+#### 🎁 ClawHub Integration (Unique Feature!)
+
+Native support for ClawHub skill marketplace:
+
+- **🔍 Search Skills**: `skills.search` - Discover skills from ClawHub
+- **📥 Install Skills**: `skills.install` - One-command install from ClawHub or URL
+- **🔄 Update Skills**: `skills.update` - Keep skills up-to-date
+- **📋 Skill Status**: Complete visibility into installed/bundled/available skills
+- **🔒 Lock File**: `skill.lock.json` tracks installed versions
+
+**Example**:
+```bash
+# Search for Twitter skills
+curl -X POST http://phone-ip:8080/gateway \
+  -d '{"method":"skills.search","params":{"query":"twitter"}}'
+
+# Install a skill from ClawHub
+curl -X POST http://phone-ip:8080/gateway \
+  -d '{"method":"skills.install","params":{"source":"clawhub://twitter"}}'
+```
+
+*📦 npm registry support coming soon!*
 
 ---
 
