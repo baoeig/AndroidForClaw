@@ -1,7 +1,7 @@
 # 📱 AndroidForClaw — OpenClaw 的手机版，来了
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/badge/Release-v2.4.5-blue.svg)](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v2.4.5)
+[![Release](https://img.shields.io/badge/Release-v1.0.0-blue.svg)](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v1.0.0)
 [![Android](https://img.shields.io/badge/Platform-Android%208.0%2B-green.svg)](https://www.android.com/)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9%2B-blue.svg)](https://kotlinlang.org/)
 
@@ -153,20 +153,20 @@ curl -X POST http://手机IP:8080/gateway \
 
 ### 方法 1: 下载预编译 APK（推荐）
 
-**📥 最新版本**: [v2.4.5](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v2.4.5) | **📦 浏览文件**: [releases/](releases/)
+**📥 最新版本**: [v1.0.0](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v1.0.0) | **📦 浏览文件**: [releases/](releases/)
 
 1. **下载 APK**
    ```
-   androidforclaw-v2.4.5-release.apk   (主应用, ~31MB)
-   Screen4Claw-v2.4.5-release.apk      (S4Claw: 无障碍服务+截图, ~4.4MB)
-   BClaw-universal-release.apk         (Browser4Claw: AI 浏览器, ~8.4MB, 可选)
+   AndroidForClaw-v1.0.0-release.apk   (主应用, ~31MB)
+   Screen4Claw-v1.0.0-release.apk      (S4Claw: 无障碍服务+截图, ~4.4MB)
+   BClaw-v1.0.0-release.apk            (Browser4Claw: AI 浏览器, ~8.4MB, 可选)
    ```
 
 2. **安装**
    ```bash
-   adb install androidforclaw-v2.4.5-release.apk
-   adb install Screen4Claw-v2.4.5-release.apk
-   adb install BClaw-universal-release.apk  # 可选
+   adb install AndroidForClaw-v1.0.0-release.apk
+   adb install Screen4Claw-v1.0.0-release.apk
+   adb install BClaw-v1.0.0-release.apk  # 可选
    ```
 
 3. **配置 API**
