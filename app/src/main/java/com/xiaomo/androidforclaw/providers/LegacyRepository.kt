@@ -12,7 +12,7 @@ import com.xiaomo.androidforclaw.util.AppConstants
  * Provides higher-level API wrapper
  * Automatically selects OpenAI or Anthropic format based on config
  *
- * **配置来源**: 从 /sdcard/.androidforclaw/config/openclaw.json 和 models.json 读取配置
+ * **配置来源**: 从 /sdcard/.androidforclaw/openclaw.json 和 models.json 读取配置
  */
 class LegacyRepository(
     context: Context,

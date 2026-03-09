@@ -16,7 +16,7 @@ class ConfigMethods(
 ) {
     private val configLoader = ConfigLoader(context)
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
-    private val configPath = "/sdcard/.androidforclaw/config/openclaw.json"
+    private val configPath = "/sdcard/.androidforclaw/openclaw.json"
 
     /**
      * config.get() - Get current configuration

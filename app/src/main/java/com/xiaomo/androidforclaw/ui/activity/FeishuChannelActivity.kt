@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.xiaomo.androidforclaw.config.ConfigLoader
 import kotlinx.coroutines.launch
@@ -170,7 +171,8 @@ fun FeishuChannelScreen(onBack: () -> Unit, context: android.content.Context = a
                 label = { Text("App ID") },
                 placeholder = { Text("cli_xxxxxx") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation()
             )
 
             OutlinedTextField(
@@ -179,7 +181,8 @@ fun FeishuChannelScreen(onBack: () -> Unit, context: android.content.Context = a
                 label = { Text("App Secret") },
                 placeholder = { Text("输入 App Secret") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation()
             )
 
             // 连接模式
@@ -337,7 +340,7 @@ fun FeishuChannelScreen(onBack: () -> Unit, context: android.content.Context = a
 
             // 配置文件路径提示
             Text(
-                text = "配置保存在:\n/sdcard/.androidforclaw/config/openclaw.json (gateway.feishu)",
+                text = "配置保存在:\n/sdcard/.androidforclaw/openclaw.json (gateway.feishu)",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 8.dp)

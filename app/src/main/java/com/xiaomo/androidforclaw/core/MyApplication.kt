@@ -665,7 +665,7 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
 
                 if (!feishuConfig.enabled) {
                     Log.i(TAG, "⏭️  Feishu Channel 未启用，跳过初始化")
-                    Log.i(TAG, "   配置路径: /sdcard/.androidforclaw/config/openclaw.json")
+                    Log.i(TAG, "   配置路径: /sdcard/.androidforclaw/openclaw.json")
                     Log.i(TAG, "   设置 gateway.feishu.enabled = true 以启用")
                     Log.i(TAG, "========================================")
                     return@launch
@@ -1414,7 +1414,7 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
 
                 if (discordConfigData == null || !discordConfigData.enabled) {
                     Log.i(TAG, "⏭️  Discord Channel 未启用，跳过初始化")
-                    Log.i(TAG, "   配置路径: /sdcard/.androidforclaw/config/openclaw.json")
+                    Log.i(TAG, "   配置路径: /sdcard/.androidforclaw/openclaw.json")
                     Log.i(TAG, "   设置 gateway.discord.enabled = true 以启用")
                     Log.i(TAG, "========================================")
                     return@launch

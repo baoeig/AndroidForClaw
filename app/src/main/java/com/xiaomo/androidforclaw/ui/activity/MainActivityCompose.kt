@@ -640,7 +640,7 @@ fun SettingsTab(
         Card(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
-                val openclawJsonPath = "/sdcard/.androidforclaw/config/openclaw.json"
+                val openclawJsonPath = "/sdcard/.androidforclaw/openclaw.json"
                 val file = java.io.File(openclawJsonPath)
                 if (file.exists()) {
                     try {
@@ -682,7 +682,7 @@ fun SettingsTab(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "/sdcard/.androidforclaw/config/openclaw.json",
+                        text = "/sdcard/.androidforclaw/openclaw.json",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                         fontSize = 10.sp

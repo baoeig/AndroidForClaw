@@ -416,7 +416,7 @@ com.xiaomo.androidforclaw/
 
 ### 2. OpenClaw 配置
 
-**文件**: `/sdcard/.androidforclaw/config/openclaw.json`
+**文件**: `/sdcard/.androidforclaw/openclaw.json`
 
 **内容**:
 - Agent 设置

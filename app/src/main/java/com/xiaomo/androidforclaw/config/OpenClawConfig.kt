@@ -8,7 +8,7 @@ import com.google.gson.annotations.SerializedName
  * Aligned with OpenClaw config format
  * Reference: OpenClaw src/config/types.config.ts
  *
- * Config file location: /sdcard/.androidforclaw/config/openclaw.json
+ * Config file location: /sdcard/.androidforclaw/openclaw.json
  */
 
 /**

@@ -178,9 +178,9 @@ curl -X POST http://phone-ip:8080/gateway \
 3. **Configure API**
    - Push config to device:
      ```bash
-     adb push config/openclaw.json /sdcard/.androidforclaw/config/openclaw.json
+     adb push config/openclaw.json /sdcard/.androidforclaw/openclaw.json
      ```
-   - Or edit directly on phone: `/sdcard/.androidforclaw/config/openclaw.json`
+   - Or edit directly on phone: `/sdcard/.androidforclaw/openclaw.json`
 
 4. **Grant Permissions**
    - Open **S4Claw** app and enable:
@@ -201,13 +201,7 @@ curl -X POST http://phone-ip:8080/gateway \
    cd AndroidForClaw
    ```
 
-2. **Configure**
-   ```bash
-   cp config/openclaw.json.example config/openclaw.json
-   # Edit config/openclaw.json, fill in your API Keys
-   ```
-
-3. **Build & Install**
+2. **Build & Install**
    ```bash
    # Build Release APKs (signed automatically)
    ./gradlew :app:assembleRelease :extensions:observer:assembleRelease
@@ -221,6 +215,22 @@ curl -X POST http://phone-ip:8080/gateway \
    ```
 
    **Note**: For debug builds during development, replace `assembleRelease` with `assembleDebug`.
+
+3. **Configure API Keys**
+
+   The app will create default config at `/sdcard/.androidforclaw/openclaw.json` on first launch.
+
+   Edit the config file on device:
+   ```bash
+   # Pull config from device
+   adb pull /sdcard/.androidforclaw/openclaw.json
+
+   # Edit openclaw.json and fill in your API Keys
+   # Then push back to device
+   adb push openclaw.json /sdcard/.androidforclaw/openclaw.json
+   ```
+
+   Or edit directly via app's Config Activity (Settings → Configuration).
 
 ---
 
@@ -280,7 +290,7 @@ All files are accessible and editable through your phone's file manager!
 
 ## 🛠️ Configuration
 
-**Config File**: `/sdcard/.androidforclaw/config/openclaw.json` (single config file, aligned with OpenClaw)
+**Config File**: `/sdcard/.androidforclaw/openclaw.json` (single config file, aligned with OpenClaw)
 
 **Configuration includes**:
 - Agent settings (maxIterations, defaultModel, timeout, mode)
@@ -350,7 +360,7 @@ See [config/openclaw.json.example](config/openclaw.json.example) for full option
 
 ### Via Feishu (Lark)
 
-1. Configure Feishu bot in `/sdcard/.androidforclaw/config/openclaw.json`:
+1. Configure Feishu bot in `/sdcard/.androidforclaw/openclaw.json`:
    ```json
    {
      "gateway": {
@@ -367,7 +377,7 @@ See [config/openclaw.json.example](config/openclaw.json.example) for full option
 
 ### Via Discord
 
-1. Configure Discord bot in `/sdcard/.androidforclaw/config/openclaw.json`
+1. Configure Discord bot in `/sdcard/.androidforclaw/openclaw.json`
 2. Invite bot to server
 3. Send message: `@Bot open WeChat`
 

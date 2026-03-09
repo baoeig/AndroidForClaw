@@ -59,7 +59,7 @@ class ConfigActivity : AppCompatActivity() {
                     Log.d(TAG, "First provider: ${firstProvider.key}, baseUrl: ${providerConfig.baseUrl}")
 
                     etApiBase.setText(providerConfig.baseUrl)
-                    // Show actual API key for editing (not masked)
+                    // Show API key (password masked by inputType)
                     etApiKey.setText(providerConfig.apiKey)
 
                     // Display first model

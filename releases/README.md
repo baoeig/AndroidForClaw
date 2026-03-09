@@ -29,7 +29,7 @@ Pre-built APK packages, ready to use.
 
 3. **Configure API**
 
-   Create config file `/sdcard/.androidforclaw/config/openclaw.json`:
+   Create config file `/sdcard/.androidforclaw/openclaw.json`:
 
    ```json
    {
@@ -62,7 +62,7 @@ Pre-built APK packages, ready to use.
 
    Push config to device:
    ```bash
-   adb push openclaw.json /sdcard/.androidforclaw/config/openclaw.json
+   adb push openclaw.json /sdcard/.androidforclaw/openclaw.json
    ```
 
 4. **Grant Permissions**
@@ -75,7 +75,7 @@ Pre-built APK packages, ready to use.
 
 5. **Configure Channels** (Optional)
 
-   Configure Feishu or Discord in `/sdcard/.androidforclaw/config/openclaw.json`:
+   Configure Feishu or Discord in `/sdcard/.androidforclaw/openclaw.json`:
 
    ```json
    {

@@ -4,7 +4,7 @@
 
 应用运行时会在以下位置创建配置文件：
 ```
-/sdcard/.androidforclaw/config/openclaw.json
+/sdcard/.androidforclaw/openclaw.json
 ```
 
 如果配置文件不存在，应用会自动从 `assets/openclaw.json.default` 复制默认配置。
@@ -80,9 +80,9 @@
 
 2. **通过 ADB 修改**：
    ```bash
-   adb pull /sdcard/.androidforclaw/config/openclaw.json
+   adb pull /sdcard/.androidforclaw/openclaw.json
    # 编辑文件
-   adb push openclaw.json /sdcard/.androidforclaw/config/openclaw.json
+   adb push openclaw.json /sdcard/.androidforclaw/openclaw.json
    ```
 
 3. **通过应用界面**：

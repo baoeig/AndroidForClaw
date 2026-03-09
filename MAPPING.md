@@ -59,7 +59,7 @@
 | `src/config/models-config.ts` | `config/ModelConfig.kt` |
 | `src/config/openclaw-config.ts` | - |
 | `src/config/config-loader.ts` | `config/ConfigLoader.kt` |
-| `~/.openclaw/openclaw.json` | `/sdcard/.androidforclaw/config/openclaw.json` |
+| `~/.openclaw/openclaw.json` | `/sdcard/.androidforclaw/openclaw.json` |
 | `~/.openclaw/config/models.json` | `/sdcard/.androidforclaw/config/models.json` |
 
 ### Memory

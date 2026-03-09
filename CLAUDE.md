@@ -168,7 +168,7 @@
 
 **与 OpenClaw 对齐**: AndroidForClaw 使用与 OpenClaw 相同的单配置文件结构
 
-**配置文件**: `/sdcard/.androidforclaw/config/openclaw.json` (唯一配置文件,对齐 ~/.openclaw/openclaw.json)
+**配置文件**: `/sdcard/.androidforclaw/openclaw.json` (唯一配置文件,对齐 ~/.openclaw/openclaw.json)
 
 包含所有配置:
 - **Agent 配置**: maxIterations, defaultModel, timeout, mode

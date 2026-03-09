@@ -39,71 +39,12 @@ class ConfigLoader(private val context: Context) {
     private val openclawConfigFile: File
 
     init {
-        // 使用 /sdcard/.androidforclaw/config 目录，用户可通过文件管理器访问
-        CONFIG_DIR = "/sdcard/.androidforclaw/config"
+        // 使用 /sdcard/.androidforclaw 目录（对齐 OpenClaw ~/.openclaw/）
+        CONFIG_DIR = "/sdcard/.androidforclaw"
         configDir = File(CONFIG_DIR)
         openclawConfigFile = File(configDir, OPENCLAW_CONFIG_FILE)
 
         Log.d(TAG, "配置目录: ${configDir.absolutePath}")
-
-        // 尝试从旧位置迁移配置文件（如果存在且可读）
-        migrateConfigFromOldLocation()
-    }
-
-    /**
-     * 从旧的 /sdcard/.androidforclaw 迁移配置到新位置
-     *
-     * Old location: /sdcard/.androidforclaw/openclaw.json (直接在根目录)
-     * New location: /sdcard/.androidforclaw/config/openclaw.json (在 config 子目录)
-     */
-    private fun migrateConfigFromOldLocation() {
-        try {
-            // 旧配置文件直接在 .androidforclaw 目录下
-            val oldConfigFile = File("/sdcard/.androidforclaw", OPENCLAW_CONFIG_FILE)
-
-            // If old config file exists and new config file does not exist, try to migrate
-            if (oldConfigFile.exists() && !openclawConfigFile.exists()) {
-                Log.i(TAG, "检测到旧配置文件，开始迁移: ${oldConfigFile.absolutePath}")
-                ensureConfigDir()
-
-                // Try method 1: direct copy (if has permission)
-                try {
-                    if (oldConfigFile.canRead()) {
-                        oldConfigFile.copyTo(openclawConfigFile, overwrite = true)
-                        Log.i(TAG, "✅ 配置文件迁移成功 (方法1-直接复制): ${openclawConfigFile.absolutePath}")
-                        return
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "方法1失败: ${e.message}，尝试方法2...")
-                }
-
-                // Try method 2: read via shell (bypass permission restrictions)
-                try {
-                    val process = Runtime.getRuntime().exec(arrayOf("cat", oldConfigFile.absolutePath))
-                    val content = process.inputStream.bufferedReader().use { it.readText() }
-                    val exitCode = process.waitFor()
-
-                    if (exitCode == 0 && content.isNotBlank()) {
-                        openclawConfigFile.writeText(content)
-                        Log.i(TAG, "✅ 配置文件迁移成功 (方法2-shell读取): ${openclawConfigFile.absolutePath}")
-                        Log.i(TAG, "   迁移的配置文件大小: ${content.length} bytes")
-                        return
-                    } else {
-                        Log.w(TAG, "方法2失败: exit code $exitCode")
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "方法2失败: ${e.message}")
-                }
-
-                Log.w(TAG, "⚠️ 所有迁移方法均失败，将使用默认配置")
-            } else if (!oldConfigFile.exists()) {
-                Log.d(TAG, "旧配置文件不存在，无需迁移")
-            } else {
-                Log.d(TAG, "新配置文件已存在，跳过迁移")
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "配置文件迁移失败（将使用默认配置）: ${e.message}")
-        }
     }
 
     // Config cache

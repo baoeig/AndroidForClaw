@@ -321,7 +321,7 @@ Cannot fetch weather data. Please check your connection.
 ## ⚙️ Configuration (Optional)
 
 If using weather API, configure in:
-`/sdcard/.androidforclaw/config/openclaw.json`
+`/sdcard/.androidforclaw/openclaw.json`
 
 ```json
 {

@@ -44,7 +44,7 @@ Use this skill when user asks about:
 ## 📁 Usage Data Location
 
 Usage data is stored in:
-- **Config**: `/sdcard/.androidforclaw/config/openclaw.json`
+- **Config**: `/sdcard/.androidforclaw/openclaw.json`
 - **Logs**: `/sdcard/.androidforclaw/logs/usage/`
 
 File structure:
@@ -317,7 +317,7 @@ Recommendations:
 ## ⚙️ Configuration
 
 Model pricing is configured in:
-`/sdcard/.androidforclaw/config/openclaw.json`
+`/sdcard/.androidforclaw/openclaw.json`
 
 ```json
 {

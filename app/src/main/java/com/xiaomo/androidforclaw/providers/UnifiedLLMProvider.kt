@@ -174,6 +174,14 @@ class UnifiedLLMProvider(private val context: Context) {
             val apiUrl = buildApiUrl(provider, model)
 
             Log.d(TAG, "  URL: $apiUrl")
+            Log.d(TAG, "  Headers: ${headers.names()}")
+            headers.names().forEach { name ->
+                if (name.lowercase() == "authorization") {
+                    Log.d(TAG, "    $name: Bearer ${provider.apiKey?.take(10)}...")
+                } else {
+                    Log.d(TAG, "    $name: ${headers[name]}")
+                }
+            }
 
             // Send request
             val request = Request.Builder()

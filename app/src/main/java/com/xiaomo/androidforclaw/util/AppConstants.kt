@@ -9,7 +9,7 @@ object AppConstants {
     // ============= API 配置说明 =============
     // 所有 API 配置现在从以下配置文件读取：
     // - /sdcard/.androidforclaw/config/models.json (模型提供商配置)
-    // - /sdcard/.androidforclaw/config/openclaw.json (OpenClaw 主配置)
+    // - /sdcard/.androidforclaw/openclaw.json (OpenClaw 主配置)
     //
     // 请勿在此文件中硬编码 API Key 和 Base URL
     // 使用 ConfigLoader.loadModelsConfig() 和 ConfigLoader.loadOpenClawConfig() 读取配置
