@@ -160,7 +160,8 @@ object MainEntryNew {
                 androidToolRegistry = androidToolRegistry,
                 contextManager = contextManager,
                 maxIterations = maxIterations,
-                modelRef = null  // Use default model
+                modelRef = null,  // Use default model
+                configLoader = configLoader  // Gap 2: context window resolution
             )
             Log.d(TAG, "✓ AgentLoop initialized (maxIterations: $maxIterations)")
 
