@@ -105,3 +105,6 @@ __pycache__/
 # npm/ClawHub 测试文件
 *.tgz
 package/
+
+# Release APKs (构建产物,不提交)
+release-apks/

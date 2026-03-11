@@ -1,7 +1,9 @@
 # 📱 AndroidForClaw — OpenClaw for Android, Now Available
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/badge/Release-v2.5.0-blue.svg)](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v2.5.0)
+[![Release](https://img.shields.io/github/v/release/xiaomochn/AndroidForClaw?label=Release&color=blue)](https://github.com/xiaomochn/AndroidForClaw/releases/latest)
+[![Download](https://img.shields.io/badge/Download-APK-brightgreen)](https://github.com/xiaomochn/AndroidForClaw/releases/latest)
+[![Mirror](https://img.shields.io/badge/Mirror-China-red)](https://ghproxy.com/)
 [![Android](https://img.shields.io/badge/Platform-Android%208.0%2B-green.svg)](https://www.android.com/)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9%2B-blue.svg)](https://kotlinlang.org/)
 
@@ -157,22 +159,41 @@ curl -X POST http://phone-ip:8080/gateway \
 
 ### Method 1: Download Pre-built APK (Recommended)
 
-**📥 Latest Release**: [v2.5.0](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v2.5.0) | **📦 Browse Files**: [releases/](https://github.com/xiaomochn/AndroidForClaw/tree/main/releases)
+**📥 Latest Release**: [v2.5.0](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v2.5.0)
 
-1. **Download APK**
-   ```
-   AndroidForClaw-v1.0.0-release.apk   (Main app, ~31MB)
-   Screen4Claw-v1.0.0-release.apk      (S4Claw: Accessibility & Screenshot, ~4.4MB)
-   BClaw-v1.0.0-release.apk            (Browser4Claw: Browser for AI, ~8.4MB, Optional)
-   ```
+#### 🚀 Quick Download (Mirror Accelerated for China)
 
-   **📖 Detailed Installation Guide**: See [releases/README.md](releases/README.md) for complete setup instructions.
+```bash
+# Main App (Required, ~31MB)
+curl -LO "https://ghproxy.com/https://github.com/xiaomochn/AndroidForClaw/releases/latest/download/AndroidForClaw.apk"
 
-2. **Install**
+# Observer Service (Recommended, ~4.4MB)
+curl -LO "https://ghproxy.com/https://github.com/xiaomochn/AndroidForClaw/releases/latest/download/ObserverService.apk"
+
+# Browser (Optional, ~8.4MB)
+curl -LO "https://ghproxy.com/https://github.com/xiaomochn/AndroidForClaw/releases/latest/download/BrowserForClaw.apk"
+```
+
+> 💡 **Slow download?** Use mirror links above for faster speed in China, or try alternative mirrors:
+> - `https://gh.api.99988866.xyz/https://github.com/...`
+> - `https://mirror.ghproxy.com/https://github.com/...`
+
+#### 📦 APK Files
+
+```
+AndroidForClaw.apk      (Main app, ~31MB, Required)
+ObserverService.apk     (Accessibility & Screenshot, ~4.4MB, Recommended)
+BrowserForClaw.apk      (Browser for AI, ~8.4MB, Optional)
+```
+
+**📖 Detailed Guide**: See [RELEASE_GUIDE.md](RELEASE_GUIDE.md) for complete download options and CDN setup.
+
+2. **Install APKs**
    ```bash
-   adb install AndroidForClaw-v1.0.0-release.apk
-   adb install Screen4Claw-v1.0.0-release.apk
-   adb install BClaw-v1.0.0-release.apk  # Optional
+   # Install in order
+   adb install AndroidForClaw.apk      # Main app (Required)
+   adb install ObserverService.apk     # Accessibility service (Recommended)
+   adb install BrowserForClaw.apk      # Browser (Optional)
    ```
 
 3. **Configure API**
@@ -508,7 +529,32 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📋 Version History
 
-### Latest Release: v2.4.4 (2026-03-09)
+### Latest Release: v2.5.0 (2026-03-11)
+
+**🔧 Critical Bug Fixes & Infrastructure Improvements**
+
+**Key Fixes**:
+- ✅ Fixed Skills metadata parsing - Always Skills now correctly loaded (0 → 2)
+- ✅ Fixed Feishu message sending failure (table limit) - Auto fallback to plain text
+- ✅ Added AgentLoop global error handling - All errors now reported to users
+- ✅ Fixed .gitignore issue - WorkspaceInitializer.kt now properly tracked
+- ✅ Improved release workflow - APKs with fixed names in unified directory
+
+**New Features**:
+- 📦 Automated release script (`scripts/release.sh`)
+- 🚀 GitHub mirror download links for faster access in China
+- 📖 Comprehensive release guide and download options
+
+**Technical Improvements**:
+- Feishu plugin: Table count pre-check (maxTablesPerCard = 3)
+- MyApplication: Send failure fallback retry mechanism
+- SkillParser: Fixed multi-line JSON extraction with Regex.find()
+
+**📥 Download**: [v2.5.0 Release](https://github.com/xiaomochn/AndroidForClaw/releases/tag/v2.5.0)
+
+---
+
+### Previous Release: v2.4.4 (2026-03-09)
 
 **🔧 Bug Fixes - API Authentication**
 
