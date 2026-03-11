@@ -78,6 +78,13 @@ object MainEntryNew {
     }
 
     /**
+     * Get ToolRegistry (for registering extension tools like feishu)
+     */
+    fun getToolRegistry(): ToolRegistry? {
+        return if (::toolRegistry.isInitialized) toolRegistry else null
+    }
+
+    /**
      * Initialize - Must be called before use
      */
     fun initialize(app: Application) {
@@ -122,7 +129,8 @@ object MainEntryNew {
             contextBuilder = ContextBuilder(
                 context = application,
                 toolRegistry = toolRegistry,
-                androidToolRegistry = androidToolRegistry
+                androidToolRegistry = androidToolRegistry,
+                configLoader = configLoader
             )
             Log.d(TAG, "✓ ContextBuilder initialized")
 

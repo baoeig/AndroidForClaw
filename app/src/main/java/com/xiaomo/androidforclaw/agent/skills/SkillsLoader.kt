@@ -364,10 +364,14 @@ class SkillsLoader(private val context: Context) {
     /**
      * Keyword matching (Block 5 improvement)
      * Used to determine if Skill is relevant to user goal
+     *
+     * Two-tier matching:
+     * 1. Predefined keyword mappings (high accuracy)
+     * 2. Generic: match skill name or description words in user goal (fallback)
      */
     private fun matchesKeywords(skill: SkillDocument, keywords: String): Boolean {
         // Predefined keyword mappings
-        return when (skill.name) {
+        val matched = when (skill.name) {
             "app-testing" -> {
                 keywords.contains("测试") || keywords.contains("test") ||
                 keywords.contains("检查") || keywords.contains("验证") ||
@@ -401,8 +405,60 @@ class SkillsLoader(private val context: Context) {
                 keywords.contains("离线") || keywords.contains("断网") ||
                 keywords.contains("api") || keywords.contains("请求")
             }
+            // Feishu skills (飞书 = feishu)
+            "feishu", "feishu-doc" -> {
+                keywords.contains("飞书") || keywords.contains("feishu") ||
+                keywords.contains("文档") || keywords.contains("doc")
+            }
+            "feishu-wiki" -> {
+                keywords.contains("飞书") || keywords.contains("feishu") ||
+                keywords.contains("知识库") || keywords.contains("wiki")
+            }
+            "feishu-drive" -> {
+                keywords.contains("飞书") || keywords.contains("feishu") ||
+                keywords.contains("云空间") || keywords.contains("drive") ||
+                keywords.contains("文件夹") || keywords.contains("云文档")
+            }
+            "feishu-bitable" -> {
+                keywords.contains("飞书") || keywords.contains("feishu") ||
+                keywords.contains("多维表格") || keywords.contains("bitable") ||
+                keywords.contains("表格")
+            }
+            "feishu-task" -> {
+                keywords.contains("飞书") || keywords.contains("feishu") ||
+                keywords.contains("任务") || keywords.contains("task") ||
+                keywords.contains("待办")
+            }
+            "feishu-chat" -> {
+                keywords.contains("飞书") || keywords.contains("feishu") ||
+                keywords.contains("群聊") || keywords.contains("chat") ||
+                keywords.contains("群组")
+            }
+            "feishu-perm" -> {
+                keywords.contains("飞书") || keywords.contains("feishu") ||
+                keywords.contains("权限") || keywords.contains("perm") ||
+                keywords.contains("分享") || keywords.contains("协作")
+            }
+            "feishu-urgent" -> {
+                keywords.contains("飞书") || keywords.contains("feishu") ||
+                keywords.contains("加急") || keywords.contains("urgent") ||
+                keywords.contains("提醒")
+            }
             else -> false
         }
+
+        if (matched) return true
+
+        // Feishu URL pattern matching — any feishu.cn link triggers feishu skills
+        if (skill.name.startsWith("feishu") &&
+            (keywords.contains("feishu.cn/") || keywords.contains("飞书"))) {
+            return true
+        }
+
+        // Generic fallback: match skill name tokens in user goal
+        // e.g. skill name "weather" matches "what's the weather"
+        val nameTokens = skill.name.lowercase().split("-", "_")
+        return nameTokens.any { token -> token.length >= 3 && keywords.contains(token) }
     }
 
     /**
@@ -451,6 +507,40 @@ class SkillsLoader(private val context: Context) {
             keywords.contains("离线") || keywords.contains("断网") ||
             keywords.contains("api")) {
             recommendedSkills.add("network-testing")
+        }
+
+        // Feishu tasks (飞书 = feishu, also trigger on feishu.cn URLs)
+        if (keywords.contains("飞书") || keywords.contains("feishu")) {
+            // Add the most relevant feishu skill based on sub-keywords
+            if (keywords.contains("文档") || keywords.contains("doc") || keywords.contains("docx")) {
+                recommendedSkills.add("feishu-doc")
+            }
+            if (keywords.contains("知识库") || keywords.contains("wiki")) {
+                recommendedSkills.add("feishu-wiki")
+            }
+            if (keywords.contains("表格") || keywords.contains("bitable") || keywords.contains("多维")) {
+                recommendedSkills.add("feishu-bitable")
+            }
+            if (keywords.contains("任务") || keywords.contains("task") || keywords.contains("待办")) {
+                recommendedSkills.add("feishu-task")
+            }
+            if (keywords.contains("云空间") || keywords.contains("drive") || keywords.contains("文件")) {
+                recommendedSkills.add("feishu-drive")
+            }
+            if (keywords.contains("权限") || keywords.contains("perm") || keywords.contains("分享")) {
+                recommendedSkills.add("feishu-perm")
+            }
+            if (keywords.contains("群") || keywords.contains("chat")) {
+                recommendedSkills.add("feishu-chat")
+            }
+            if (keywords.contains("加急") || keywords.contains("urgent") || keywords.contains("提醒")) {
+                recommendedSkills.add("feishu-urgent")
+            }
+            // If just "飞书" with no sub-keyword, add the general feishu skill + feishu-doc
+            if (recommendedSkills.none { it.startsWith("feishu-") }) {
+                recommendedSkills.add("feishu")
+                recommendedSkills.add("feishu-doc")
+            }
         }
 
         Log.d(TAG, "识别任务类型: ${recommendedSkills.joinToString(", ")}")

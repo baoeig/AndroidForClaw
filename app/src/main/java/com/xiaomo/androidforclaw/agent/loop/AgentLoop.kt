@@ -4,6 +4,7 @@ import android.util.Log
 import com.xiaomo.androidforclaw.agent.context.ContextErrors
 import com.xiaomo.androidforclaw.agent.context.ContextManager
 import com.xiaomo.androidforclaw.agent.context.ContextRecoveryResult
+import com.xiaomo.androidforclaw.agent.session.HistorySanitizer
 import com.xiaomo.androidforclaw.agent.tools.AndroidToolRegistry
 import com.xiaomo.androidforclaw.agent.tools.SkillResult
 import com.xiaomo.androidforclaw.agent.tools.ToolRegistry
@@ -260,10 +261,15 @@ class AgentLoop(
         messages.add(systemMessage(systemPrompt))
         writeLog("✅ System prompt added (${systemPrompt.length} chars)")
 
-        // 2. Add conversation history
-        messages.addAll(contextHistory)
+        // 2. Add conversation history (sanitized — aligned with OpenClaw)
         if (contextHistory.isNotEmpty()) {
-            writeLog("✅ Context history added: ${contextHistory.size} messages")
+            val sanitized = HistorySanitizer.sanitize(contextHistory, maxTurns = 20)
+            messages.addAll(sanitized)
+            if (sanitized.size != contextHistory.size) {
+                writeLog("✅ Context history sanitized: ${contextHistory.size} → ${sanitized.size} messages")
+            } else {
+                writeLog("✅ Context history added: ${sanitized.size} messages")
+            }
         }
 
         // 3. Add user message

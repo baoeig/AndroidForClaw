@@ -658,7 +658,14 @@ data class AgentsConfig(
  */
 data class AgentDefaultsConfig(
     @SerializedName("model")
-    val model: ModelSelectionConfig? = null
+    val model: ModelSelectionConfig? = null,
+
+    // Bootstrap file budget (aligned with OpenClaw bootstrap-budget.ts)
+    @SerializedName("bootstrapMaxChars")
+    val bootstrapMaxChars: Int = 20_000,       // Per-file max chars
+
+    @SerializedName("bootstrapTotalMaxChars")
+    val bootstrapTotalMaxChars: Int = 150_000   // Total max chars across all bootstrap files
 )
 
 /**
