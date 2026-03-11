@@ -104,6 +104,7 @@ data class AgentConfig(
 
 /**
  * Skills configuration
+ * Aligned with OpenClaw skills config schema
  */
 data class SkillsConfig(
     @SerializedName("bundledPath")
@@ -130,23 +131,66 @@ data class SkillsConfig(
     @SerializedName("cacheEnabled")
     val cacheEnabled: Boolean = true,  // Whether to cache skills content
 
+    // --- Aligned with OpenClaw skills.load.* ---
+
+    @SerializedName("extraDirs")
+    val extraDirs: List<String> = emptyList(),  // Extra skill directories (lowest priority), aligns with skills.load.extraDirs
+
+    @SerializedName("watch")
+    val watch: Boolean = true,  // Watch skill folders and refresh on change, aligns with skills.load.watch
+
+    @SerializedName("watchDebounceMs")
+    val watchDebounceMs: Long = 250,  // Debounce for watcher events (ms), aligns with skills.load.watchDebounceMs
+
     @SerializedName("entries")
     val entries: Map<String, SkillConfig> = emptyMap()  // Skill configs (aligned with OpenClaw)
 )
 
 /**
  * Individual skill configuration (aligned with OpenClaw)
+ *
+ * In OpenClaw:
+ * - `enabled`: set false to disable a skill
+ * - `env`: environment variables injected for agent run (only if not already set)
+ * - `apiKey`: convenience for skills declaring primaryEnv. Supports:
+ *   - Plain string: "my-key-value"
+ *   - SecretRef object: { "source": "env", "provider": "default", "id": "ENV_VAR_NAME" }
+ * - `config`: arbitrary key-value config passed to the skill
  */
 data class SkillConfig(
     @SerializedName("enabled")
     val enabled: Boolean = true,  // Whether enabled
 
     @SerializedName("apiKey")
-    val apiKey: String? = null,  // API Key (or { source: "env", ... })
+    val apiKey: Any? = null,  // API Key — String or SecretRef map
 
     @SerializedName("env")
-    val env: Map<String, String>? = null  // Environment variable injection
-)
+    val env: Map<String, String>? = null,  // Environment variable injection (aligns with OpenClaw)
+
+    @SerializedName("config")
+    val config: Map<String, Any>? = null  // Arbitrary skill-level config
+) {
+    /**
+     * Resolve the apiKey to a plain string value.
+     * If it's a SecretRef map like { source: "env", id: "GEMINI_API_KEY" },
+     * resolve from System.getenv.
+     */
+    fun resolveApiKey(): String? {
+        return when (apiKey) {
+            is String -> apiKey
+            is Map<*, *> -> {
+                val source = apiKey["source"] as? String
+                val id = apiKey["id"] as? String
+                if (source == "env" && id != null) {
+                    System.getenv(id)
+                } else {
+                    null
+                }
+            }
+            else -> null
+        }
+    }
+}
 
 /**
  * Tools 配置
