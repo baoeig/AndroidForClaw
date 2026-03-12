@@ -467,23 +467,36 @@ class FeishuSender(
 
     /**
      * 检测是否应该使用卡片格式
-     * 对齐 OpenClaw: /```[\s\S]*?```/.test(text) || /\|.+\|[\r\n]+\|[-:| ]+\|/.test(text)
+     * 对齐 OpenClaw: 任何 markdown 格式都用卡片渲染，避免原始符号暴露
      */
     private fun shouldUseCard(text: String): Boolean {
         // 检测代码块 ```
-        if (text.contains("```")) {
-            return true
-        }
+        if (text.contains("```")) return true
 
         // 检测 Markdown 表格 |...|
         val tableCount = countMarkdownTables(text)
         if (tableCount > 0) {
-            // 飞书卡片表格数量限制检查
             if (tableCount > config.maxTablesPerCard) {
                 Log.w(TAG, "⚠️ 表格数量 ($tableCount) 超过飞书限制 (${config.maxTablesPerCard}),将使用纯文本")
-                return false  // 超过限制,降级为纯文本
+                return false
             }
             return true
+        }
+
+        // 检测常见 Markdown 格式（加粗、斜体、标题、列表、链接等）
+        val markdownPatterns = listOf(
+            Regex("\\*\\*.+?\\*\\*"),           // **bold**
+            Regex("\\*.+?\\*"),                  // *italic*
+            Regex("^#{1,6}\\s", RegexOption.MULTILINE),  // ## heading
+            Regex("^[-*+]\\s", RegexOption.MULTILINE),   // - list item
+            Regex("^\\d+\\.\\s", RegexOption.MULTILINE), // 1. ordered list
+            Regex("\\[.+?\\]\\(.+?\\)"),         // [link](url)
+            Regex("^>\\s", RegexOption.MULTILINE),       // > blockquote
+            Regex("`[^`]+`"),                     // `inline code`
+        )
+
+        for (pattern in markdownPatterns) {
+            if (pattern.containsMatchIn(text)) return true
         }
 
         return false
