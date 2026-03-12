@@ -112,6 +112,12 @@ class ConfigActivity : AppCompatActivity() {
                 Log.d(TAG, "providers: $providers")
                 Log.d(TAG, "providers.size: ${providers.size}")
 
+                // Show current model in model config card
+                val primary = config.agents?.defaults?.model?.primary
+                if (!primary.isNullOrBlank()) {
+                    tvCurrentModelSummary.text = "当前: $primary"
+                }
+
                 if (providers.isNotEmpty()) {
                     val firstProvider = providers.entries.first()
                     val providerConfig = firstProvider.value
@@ -173,6 +179,11 @@ class ConfigActivity : AppCompatActivity() {
             // Reset to default button
             btnReset.setOnClickListener {
                 resetToDefault()
+            }
+
+            // Model configuration entry
+            cardModelConfig.setOnClickListener {
+                startActivity(Intent(this@ConfigActivity, ModelConfigActivity::class.java))
             }
 
             // Skills management entry

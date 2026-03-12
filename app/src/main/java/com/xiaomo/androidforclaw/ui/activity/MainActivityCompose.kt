@@ -142,8 +142,8 @@ class MainActivityCompose : ComponentActivity() {
                     onNavigateToConfig = {
                         Log.d("MainActivityCompose", "Clicked model configuration")
                         try {
-                            startActivity(Intent(this, ConfigActivity::class.java))
-                            Log.d("MainActivityCompose", "Successfully started ConfigActivity")
+                            startActivity(Intent(this, ModelConfigActivity::class.java))
+                            Log.d("MainActivityCompose", "Successfully started ModelConfigActivity")
                         } catch (e: Exception) {
                             Log.e("MainActivityCompose", "Failed to start ConfigActivity", e)
                         }
