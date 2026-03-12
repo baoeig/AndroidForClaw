@@ -301,6 +301,9 @@ class ModelSetupActivity : AppCompatActivity() {
 
             val defaultModelId = if (selectedProvider == "custom") {
                 "custom/$modelId"
+            } else if (modelId.startsWith("$providerName/")) {
+                // modelId already contains provider prefix (e.g. "openrouter/hunter-alpha")
+                modelId
             } else {
                 "$providerName/$modelId"
             }
