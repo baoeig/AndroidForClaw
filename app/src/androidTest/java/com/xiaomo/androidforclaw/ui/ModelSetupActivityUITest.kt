@@ -1,0 +1,449 @@
+package com.xiaomo.androidforclaw.ui
+
+import android.content.Intent
+import android.widget.AutoCompleteTextView
+import androidx.lifecycle.Lifecycle
+import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.*
+import androidx.test.espresso.assertion.ViewAssertions.*
+import androidx.test.espresso.matcher.ViewMatchers.*
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.LargeTest
+import com.draco.ladb.R
+import com.xiaomo.androidforclaw.ui.activity.ModelSetupActivity
+import org.hamcrest.Matchers.*
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * ModelSetupActivity UI 自动化测试
+ *
+ * 覆盖场景：
+ * 1. 页面启动 & 基本元素展示
+ * 2. 默认模式交互（OpenRouter）
+ * 3. 高级选项展开/收起
+ * 4. Provider 切换
+ * 5. 不填 Key 直接开始（内置 Key）
+ * 6. 填入自定义 Key 开始
+ * 7. 跳过按钮
+ * 8. 自定义 Provider 特殊 UI
+ * 9. 模型选择下拉
+ * 10. 错误提示验证
+ *
+ * 运行:
+ * adb shell am instrument -w -e class com.xiaomo.androidforclaw.ui.ModelSetupActivityUITest \
+ *   com.xiaomo.androidforclaw.test/androidx.test.runner.AndroidJUnitRunner
+ */
+@RunWith(AndroidJUnit4::class)
+@LargeTest
+class ModelSetupActivityUITest {
+
+    private var scenario: ActivityScenario<ModelSetupActivity>? = null
+
+    private fun launchActivity(manual: Boolean = false): ActivityScenario<ModelSetupActivity> {
+        val intent = Intent(ApplicationProvider.getApplicationContext(), ModelSetupActivity::class.java).apply {
+            if (manual) putExtra(ModelSetupActivity.EXTRA_MANUAL, true)
+        }
+        return ActivityScenario.launch<ModelSetupActivity>(intent).also { scenario = it }
+    }
+
+    @After
+    fun tearDown() {
+        scenario?.close()
+    }
+
+    // ==================== 1. 页面启动 & 基本元素 ====================
+
+    @Test
+    fun test01_activityLaunches() {
+        launchActivity()
+        onView(withText("欢迎使用 AndroidForClaw"))
+            .check(matches(isDisplayed()))
+    }
+
+    @Test
+    fun test02_welcomeElementsDisplayed() {
+        launchActivity()
+        onView(withText("🤖")).check(matches(isDisplayed()))
+        onView(withText("欢迎使用 AndroidForClaw")).check(matches(isDisplayed()))
+        onView(withText("已内置免费 Key，可直接开始使用")).check(matches(isDisplayed()))
+    }
+
+    @Test
+    fun test03_tutorialCardDisplayed() {
+        launchActivity()
+        onView(withText("📖 如何获取 API Key？")).check(matches(isDisplayed()))
+    }
+
+    @Test
+    fun test04_apiKeyInputDisplayed() {
+        launchActivity()
+        onView(withId(R.id.et_setup_api_key)).check(matches(isDisplayed()))
+    }
+
+    @Test
+    fun test05_modelDropdownDisplayed() {
+        launchActivity()
+        onView(withId(R.id.act_model)).check(matches(isDisplayed()))
+    }
+
+    @Test
+    fun test06_buttonsDisplayed() {
+        launchActivity()
+        onView(withId(R.id.btn_skip)).check(matches(isDisplayed()))
+        onView(withId(R.id.btn_skip)).check(matches(withText("跳过")))
+        onView(withId(R.id.btn_start)).check(matches(isDisplayed()))
+        onView(withId(R.id.btn_start)).check(matches(withText("开始使用")))
+    }
+
+    @Test
+    fun test07_openRouterLinkDisplayed() {
+        launchActivity()
+        onView(withId(R.id.tv_open_openrouter))
+            .check(matches(isDisplayed()))
+            .check(matches(withText("🔗 打开 openrouter.ai/keys")))
+    }
+
+    // ==================== 2. 默认模式 ====================
+
+    @Test
+    fun test08_defaultModelIsHunterAlpha() {
+        launchActivity()
+        onView(withId(R.id.act_model))
+            .check(matches(withText(containsString("Hunter Alpha"))))
+    }
+
+    @Test
+    fun test09_advancedOptionsHiddenByDefault() {
+        launchActivity()
+        onView(withId(R.id.layout_advanced))
+            .check(matches(withEffectiveVisibility(Visibility.GONE)))
+    }
+
+    // ==================== 3. 高级选项展开/收起 ====================
+
+    @Test
+    fun test10_advancedToggleExpands() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.layout_advanced)).check(matches(isDisplayed()))
+        onView(withId(R.id.chip_group_provider)).check(matches(isDisplayed()))
+    }
+
+    @Test
+    fun test11_advancedToggleCollapses() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.layout_advanced)).check(matches(isDisplayed()))
+
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.layout_advanced))
+            .check(matches(withEffectiveVisibility(Visibility.GONE)))
+    }
+
+    @Test
+    fun test12_advancedToggleTextChanges() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced))
+            .check(matches(withText(containsString("使用其他服务商"))))
+
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.tv_advanced))
+            .check(matches(withText(containsString("收起"))))
+
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.tv_advanced))
+            .check(matches(withText(containsString("使用其他服务商"))))
+    }
+
+    // ==================== 4. Provider 切换 ====================
+
+    @Test
+    fun test13_openrouterChipSelectedByDefault() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.chip_openrouter)).check(matches(isChecked()))
+    }
+
+    @Test
+    fun test14_switchToAnthropic() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.chip_anthropic)).perform(scrollTo(), click())
+
+        // Verify hint changes via the EditText's hint
+        onView(withId(R.id.et_setup_api_key))
+            .check(matches(withHint("Anthropic API Key")))
+
+        // Model updates
+        onView(withId(R.id.act_model))
+            .check(matches(withText(containsString("Claude Sonnet 4"))))
+    }
+
+    @Test
+    fun test15_switchToOpenAI() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.chip_openai)).perform(scrollTo(), click())
+
+        onView(withId(R.id.et_setup_api_key))
+            .check(matches(withHint("OpenAI API Key")))
+
+        onView(withId(R.id.act_model))
+            .check(matches(withText(containsString("GPT-4.1"))))
+    }
+
+    @Test
+    fun test16_switchToCustom() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.chip_custom)).perform(scrollTo(), click())
+
+        // Base URL visible and enabled
+        onView(withId(R.id.til_api_base)).check(matches(isDisplayed()))
+        onView(withId(R.id.et_setup_api_base)).check(matches(isEnabled()))
+    }
+
+    @Test
+    fun test17_collapseAdvancedResetsToOpenRouter() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.chip_anthropic)).perform(scrollTo(), click())
+
+        // Collapse → reset
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+
+        // Expand again → should be back to OpenRouter
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.chip_openrouter)).check(matches(isChecked()))
+        onView(withId(R.id.act_model)).check(matches(withText(containsString("Hunter Alpha"))))
+    }
+
+    // ==================== 5. 不填 Key 直接开始（内置 Key）====================
+
+    @Test
+    fun test18_startWithoutKey_usesBuiltIn() {
+        val s = launchActivity(manual = true)
+        onView(withId(R.id.btn_start)).perform(click())
+        Thread.sleep(1000)
+        // Activity should finish if built-in key is available
+        assertEquals(Lifecycle.State.DESTROYED, s.state)
+    }
+
+    // ==================== 6. 填入自定义 Key ====================
+
+    @Test
+    fun test19_enterCustomKey() {
+        val s = launchActivity(manual = true)
+        onView(withId(R.id.et_setup_api_key))
+            .perform(typeText("sk-or-v1-test123456"), closeSoftKeyboard())
+        onView(withId(R.id.et_setup_api_key))
+            .check(matches(withText("sk-or-v1-test123456")))
+        onView(withId(R.id.btn_start)).perform(click())
+        Thread.sleep(1000)
+        assertEquals(Lifecycle.State.DESTROYED, s.state)
+    }
+
+    // ==================== 7. 跳过按钮 ====================
+
+    @Test
+    fun test20_skipButton_finishesActivity() {
+        val s = launchActivity()
+        onView(withId(R.id.btn_skip)).perform(click())
+        Thread.sleep(1000)
+        assertEquals(Lifecycle.State.DESTROYED, s.state)
+    }
+
+    // ==================== 8. 自定义 Provider 特殊 UI ====================
+
+    @Test
+    fun test21_customProvider_baseUrlRequired() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.chip_custom)).perform(scrollTo(), click())
+
+        // Enter key but no base URL
+        onView(withId(R.id.et_setup_api_key))
+            .perform(typeText("sk-test"), closeSoftKeyboard())
+        onView(withId(R.id.btn_start)).perform(click())
+
+        Thread.sleep(500)
+
+        // Should show error — verify activity is NOT finished (validation failed)
+        scenario!!.onActivity { activity ->
+            assert(!activity.isFinishing) { "Activity should not finish without base URL" }
+        }
+    }
+
+    @Test
+    fun test22_customProvider_modelInputIsEditable() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.chip_custom)).perform(scrollTo(), click())
+
+        // Model input should be freely editable
+        onView(withId(R.id.act_model))
+            .perform(clearText(), typeText("my-custom-model"), closeSoftKeyboard())
+        onView(withId(R.id.act_model))
+            .check(matches(withText("my-custom-model")))
+    }
+
+    @Test
+    fun test23_customProvider_fillAllFields() {
+        val s = launchActivity(manual = true)
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.chip_custom)).perform(scrollTo(), click())
+
+        onView(withId(R.id.et_setup_api_key))
+            .perform(typeText("sk-my-key-123"), closeSoftKeyboard())
+        onView(withId(R.id.et_setup_api_base))
+            .perform(scrollTo(), typeText("http://localhost:8080/v1"), closeSoftKeyboard())
+        onView(withId(R.id.act_model))
+            .perform(scrollTo(), clearText(), typeText("qwen2.5:7b"), closeSoftKeyboard())
+
+        onView(withId(R.id.btn_start)).perform(scrollTo(), click())
+        Thread.sleep(1000)
+        assertEquals(Lifecycle.State.DESTROYED, s.state)
+    }
+
+    // ==================== 9. 模型选择下拉 ====================
+
+    @Test
+    fun test24_modelDropdownOpens() {
+        launchActivity()
+        // Click the dropdown end icon to open
+        onView(withId(R.id.act_model)).perform(click())
+        Thread.sleep(500)
+
+        // Verify popup is showing via activity
+        scenario!!.onActivity { activity ->
+            val actv = activity.findViewById<AutoCompleteTextView>(R.id.act_model)
+            assert(actv.isPopupShowing) { "Dropdown popup should be showing" }
+        }
+    }
+
+    @Test
+    fun test25_selectDifferentModel() {
+        launchActivity()
+        onView(withId(R.id.act_model)).perform(click())
+        Thread.sleep(500)
+
+        // Select a different item via activity
+        scenario!!.onActivity { activity ->
+            val actv = activity.findViewById<AutoCompleteTextView>(R.id.act_model)
+            // Find and click "Qwen3 Coder"
+            val adapter = actv.adapter
+            for (i in 0 until adapter.count) {
+                val item = adapter.getItem(i) as String
+                if (item.contains("Qwen3 Coder")) {
+                    actv.setText(item, false)
+                    actv.dismissDropDown()
+                    break
+                }
+            }
+        }
+
+        Thread.sleep(300)
+        onView(withId(R.id.act_model))
+            .check(matches(withText(containsString("Qwen3 Coder"))))
+    }
+
+    @Test
+    fun test26_modelDropdownHasAllPresets() {
+        launchActivity()
+
+        // Verify via activity that all presets are in the adapter
+        scenario!!.onActivity { activity ->
+            val actv = activity.findViewById<AutoCompleteTextView>(R.id.act_model)
+            val adapter = actv.adapter
+            val items = mutableListOf<String>()
+            for (i in 0 until adapter.count) {
+                items.add(adapter.getItem(i) as String)
+            }
+
+            assert(items.any { it.contains("Hunter Alpha") }) { "Should have Hunter Alpha" }
+            assert(items.any { it.contains("免费") }) { "Should have free models" }
+            assert(items.any { it.contains("Claude Sonnet") }) { "Should have Claude Sonnet" }
+            assert(items.size >= 8) { "Should have at least 8 models, got ${items.size}" }
+        }
+    }
+
+    // ==================== 10. Provider hint 验证 ====================
+
+    @Test
+    fun test27_providerHintShowsOnAdvanced() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        onView(withId(R.id.chip_anthropic)).perform(scrollTo(), click())
+
+        onView(withId(R.id.tv_provider_hint))
+            .check(matches(isDisplayed()))
+            .check(matches(withText(containsString("Anthropic"))))
+    }
+
+    @Test
+    fun test28_providerHintChangesOnSwitch() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+
+        onView(withId(R.id.chip_anthropic)).perform(scrollTo(), click())
+        onView(withId(R.id.tv_provider_hint))
+            .check(matches(withText(containsString("Anthropic"))))
+
+        onView(withId(R.id.chip_openai)).perform(scrollTo(), click())
+        onView(withId(R.id.tv_provider_hint))
+            .check(matches(withText(containsString("OpenAI"))))
+
+        onView(withId(R.id.chip_custom)).perform(scrollTo(), click())
+        onView(withId(R.id.tv_provider_hint))
+            .check(matches(withText(containsString("兼容"))))
+    }
+
+    // ==================== 11. API Key 输入行为 ====================
+
+    @Test
+    fun test29_apiKeyInputIsPlainText() {
+        launchActivity()
+        onView(withId(R.id.et_setup_api_key))
+            .perform(typeText("visible-key"), closeSoftKeyboard())
+        onView(withId(R.id.et_setup_api_key))
+            .check(matches(withText("visible-key")))
+    }
+
+    @Test
+    fun test30_apiKeyHelperText() {
+        launchActivity()
+        // The helper text "可选，留空则使用内置 Key" is in a child of TextInputLayout
+        onView(withText(containsString("可选")))
+            .check(matches(isDisplayed()))
+    }
+
+    // ==================== 12. 教程链接 ====================
+
+    @Test
+    fun test31_tutorialStepsDisplayed() {
+        launchActivity()
+        onView(withText(containsString("打开 openrouter.ai 注册账号")))
+            .check(matches(isDisplayed()))
+        onView(withText(containsString("复制 Key")))
+            .check(matches(isDisplayed()))
+    }
+
+    @Test
+    fun test32_descriptionTextDisplayed() {
+        launchActivity()
+        onView(withText(containsString("OpenRouter 聚合了")))
+            .check(matches(isDisplayed()))
+    }
+
+    @Test
+    fun test33_advancedToggleText() {
+        launchActivity()
+        onView(withId(R.id.tv_advanced))
+            .check(matches(withText(containsString("Anthropic"))))
+    }
+}
