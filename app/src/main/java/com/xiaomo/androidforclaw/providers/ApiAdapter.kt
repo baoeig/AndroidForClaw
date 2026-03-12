@@ -323,7 +323,7 @@ object ApiAdapter {
         val choice = choices.getJSONObject(0)
         val message = choice.getJSONObject("message")
 
-        val content = message.optString("content", null)
+        val content = if (message.isNull("content")) null else message.optString("content", null)
         val toolCallsArray = message.optJSONArray("tool_calls")
         val toolCalls = if (toolCallsArray != null) {
             mutableListOf<ToolCall>().apply {
