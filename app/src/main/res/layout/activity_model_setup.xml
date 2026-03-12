@@ -17,14 +17,14 @@
             android:orientation="vertical"
             android:padding="24dp">
 
-            <!-- Logo + 欢迎文字 -->
+            <!-- Logo + 欢迎 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:gravity="center_horizontal"
                 android:layout_marginTop="32dp"
-                android:layout_marginBottom="32dp">
+                android:layout_marginBottom="24dp">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -44,60 +44,60 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="配置 AI 模型后即可开始对话"
+                    android:text="只需一步：输入 OpenRouter API Key"
                     android:textSize="14sp"
                     android:textColor="#666666"
                     android:layout_marginTop="8dp" />
             </LinearLayout>
 
-            <!-- 快速选择模型服务商 -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="选择模型服务商"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="#333333"
-                android:layout_marginBottom="12dp" />
-
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/chip_group_provider"
+            <!-- 教程卡片 -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:singleSelection="true"
-                android:layout_marginBottom="20dp">
+                android:layout_marginBottom="20dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#E0E0E0"
+                app:cardBackgroundColor="#F8F9FA">
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chip_openrouter"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="OpenRouter (推荐)"
-                    style="@style/Widget.MaterialComponents.Chip.Choice"
-                    android:checked="true" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chip_anthropic"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Anthropic"
-                    style="@style/Widget.MaterialComponents.Chip.Choice" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📖 如何获取 API Key？"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="#333333"
+                        android:layout_marginBottom="8dp" />
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chip_openai"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="OpenAI"
-                    style="@style/Widget.MaterialComponents.Chip.Choice" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="1️⃣ 打开 openrouter.ai 注册账号\n2️⃣ 点击右上角头像 → Keys\n3️⃣ 点 Create Key → 复制 Key\n4️⃣ 粘贴到下方输入框"
+                        android:textSize="13sp"
+                        android:textColor="#555555"
+                        android:lineSpacingMultiplier="1.4" />
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chip_custom"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="自定义"
-                    style="@style/Widget.MaterialComponents.Chip.Choice" />
-            </com.google.android.material.chip.ChipGroup>
+                    <TextView
+                        android:id="@+id/tv_open_openrouter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🔗 打开 openrouter.ai/keys"
+                        android:textSize="13sp"
+                        android:textColor="#1976D2"
+                        android:layout_marginTop="8dp"
+                        android:clickable="true"
+                        android:focusable="true" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-            <!-- API 配置 -->
+            <!-- API Key 输入 -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -112,27 +112,12 @@
                     android:padding="16dp">
 
                     <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/til_api_base"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="API Base URL"
-                        android:layout_marginBottom="12dp"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_setup_api_base"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="textUri"
-                            android:textSize="14sp" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/til_api_key"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="API Key"
+                        android:hint="OpenRouter API Key"
                         app:endIconMode="password_toggle"
+                        app:helperText="以 sk-or- 开头"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -142,20 +127,10 @@
                             android:inputType="textPassword"
                             android:textSize="14sp" />
                     </com.google.android.material.textfield.TextInputLayout>
-
-                    <!-- 提示文字 -->
-                    <TextView
-                        android:id="@+id/tv_provider_hint"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="OpenRouter 聚合了 Claude、GPT、Gemini 等多个模型，一个 Key 即可使用全部。\n注册: openrouter.ai"
-                        android:textSize="12sp"
-                        android:textColor="#888888"
-                        android:layout_marginTop="8dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 模型选择 -->
+            <!-- 默认模型选择（可选） -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/til_model"
                 android:layout_width="match_parent"
@@ -172,14 +147,101 @@
                     android:textSize="14sp" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- 高级选项提示 -->
+            <!-- 说明 -->
             <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="OpenRouter 聚合了 Claude、GPT、Gemini 等主流模型，一个 Key 即可使用全部。首次充值 $5 即可使用很久。"
+                android:textSize="12sp"
+                android:textColor="#888888"
+                android:lineSpacingMultiplier="1.3"
+                android:layout_marginBottom="8dp" />
+
+            <!-- 高级选项 -->
+            <TextView
+                android:id="@+id/tv_advanced"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="💡 更多配置可在 设置 → 模型配置 中修改"
+                android:text="⚙️ 使用其他服务商（Anthropic / OpenAI / 自定义）"
                 android:textSize="12sp"
-                android:textColor="#999999"
-                android:layout_marginTop="8dp" />
+                android:textColor="#1976D2"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginTop="4dp" />
+
+            <!-- 高级选项区域（默认隐藏） -->
+            <LinearLayout
+                android:id="@+id/layout_advanced"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:layout_marginTop="16dp">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chip_group_provider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:singleSelection="true"
+                    android:layout_marginBottom="12dp">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_openrouter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OpenRouter"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:checked="true" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_anthropic"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Anthropic"
+                        style="@style/Widget.MaterialComponents.Chip.Choice" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_openai"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OpenAI"
+                        style="@style/Widget.MaterialComponents.Chip.Choice" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_custom"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="自定义"
+                        style="@style/Widget.MaterialComponents.Chip.Choice" />
+                </com.google.android.material.chip.ChipGroup>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_api_base"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="API Base URL"
+                    android:layout_marginBottom="12dp"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_setup_api_base"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textUri"
+                        android:textSize="14sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:id="@+id/tv_provider_hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="#888888" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="16dp" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

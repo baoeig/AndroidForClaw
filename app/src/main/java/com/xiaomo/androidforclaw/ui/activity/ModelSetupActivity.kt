@@ -1,5 +1,7 @@
 package com.xiaomo.androidforclaw.ui.activity
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -14,53 +16,36 @@ import com.xiaomo.androidforclaw.config.ModelsConfig
 import com.xiaomo.androidforclaw.config.ProviderConfig
 
 /**
- * Model Setup Guide — first-run wizard for API configuration.
+ * Model Setup Guide — simplified first-run wizard.
  *
- * Launched automatically when no valid API key is detected.
- * Guides user through:
- * 1. Choose provider (OpenRouter / Anthropic / OpenAI / Custom)
- * 2. Enter API Base URL + API Key
- * 3. Select default model
- * 4. Save to openclaw.json
+ * Default flow: user only needs to paste an OpenRouter API Key.
+ * Advanced: tap "使用其他服务商" to switch to Anthropic/OpenAI/Custom.
  */
 class ModelSetupActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "ModelSetupActivity"
-
-        /** Intent extra: if true, setup was triggered by user (not auto-detect) */
         const val EXTRA_MANUAL = "manual"
 
-        /**
-         * Check if model setup guide is needed.
-         *
-         * Returns true if:
-         * - Setup has never been completed (MMKV flag) AND
-         * - No valid API key is configured in any provider
-         */
         fun isNeeded(context: android.content.Context): Boolean {
             try {
                 val mmkv = com.tencent.mmkv.MMKV.defaultMMKV()
                 if (mmkv.decodeBool("model_setup_completed", false)) {
-                    return false  // Already completed or skipped
+                    return false
                 }
-
-                // Check if any provider has a real (non-placeholder) API key
                 val configLoader = ConfigLoader(context)
                 val config = configLoader.loadOpenClawConfig()
                 val providers = config.resolveProviders()
-
                 val hasRealKey = providers.values.any { provider ->
                     val key = provider.apiKey
                     !key.isNullOrBlank() &&
-                            !key.startsWith("\${") &&  // Not an env var placeholder
+                            !key.startsWith("\${") &&
                             key != "未配置"
                 }
-
                 return !hasRealKey
             } catch (e: Exception) {
                 Log.w(TAG, "Error checking setup need", e)
-                return false  // Don't block on error
+                return false
             }
         }
 
@@ -70,7 +55,7 @@ class ModelSetupActivity : AppCompatActivity() {
                 name = "OpenRouter",
                 baseUrl = "https://openrouter.ai/api/v1",
                 api = "openai-completions",
-                hint = "OpenRouter 聚合了 Claude、GPT、Gemini 等多个模型，一个 Key 即可使用全部。\n注册: openrouter.ai",
+                hint = "OpenRouter 聚合了 Claude、GPT、Gemini 等多个模型，一个 Key 即可使用全部。",
                 models = listOf(
                     ModelPreset("anthropic/claude-sonnet-4", "Claude Sonnet 4 (推荐)"),
                     ModelPreset("anthropic/claude-opus-4", "Claude Opus 4"),
@@ -84,7 +69,7 @@ class ModelSetupActivity : AppCompatActivity() {
                 name = "Anthropic",
                 baseUrl = "https://api.anthropic.com/v1",
                 api = "anthropic-messages",
-                hint = "Anthropic 官方 API，直连 Claude 模型。\n注册: console.anthropic.com",
+                hint = "Anthropic 官方 API，直连 Claude。注册: console.anthropic.com",
                 models = listOf(
                     ModelPreset("claude-sonnet-4-20250514", "Claude Sonnet 4 (推荐)"),
                     ModelPreset("claude-opus-4-20250514", "Claude Opus 4"),
@@ -95,7 +80,7 @@ class ModelSetupActivity : AppCompatActivity() {
                 name = "OpenAI",
                 baseUrl = "https://api.openai.com/v1",
                 api = "openai-completions",
-                hint = "OpenAI 官方 API。\n注册: platform.openai.com",
+                hint = "OpenAI 官方 API。注册: platform.openai.com",
                 models = listOf(
                     ModelPreset("gpt-4.1", "GPT-4.1 (推荐)"),
                     ModelPreset("gpt-4.1-mini", "GPT-4.1 Mini (快速)"),
@@ -106,7 +91,7 @@ class ModelSetupActivity : AppCompatActivity() {
                 name = "自定义",
                 baseUrl = "",
                 api = "openai-completions",
-                hint = "填入你的 API Base URL 和 Key。\n支持任何兼容 OpenAI API 的服务（如 vLLM、Ollama、OneAPI 等）。",
+                hint = "支持任何兼容 OpenAI API 的服务（vLLM、Ollama、OneAPI 等）。",
                 models = listOf(
                     ModelPreset("", "手动输入模型 ID")
                 )
@@ -117,15 +102,61 @@ class ModelSetupActivity : AppCompatActivity() {
     private lateinit var binding: ActivityModelSetupBinding
     private val configLoader by lazy { ConfigLoader(this) }
     private var selectedProvider = "openrouter"
+    private var advancedExpanded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityModelSetupBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setupDefaultMode()
+        setupAdvancedToggle()
         setupProviderSelection()
-        applyProviderPreset("openrouter")
         setupButtons()
+    }
+
+    /**
+     * Default mode: just show API Key input + model selector for OpenRouter.
+     */
+    private fun setupDefaultMode() {
+        // Populate model dropdown with OpenRouter presets
+        val preset = PROVIDERS["openrouter"]!!
+        val modelNames = preset.models.map { it.displayName }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, modelNames)
+        binding.actModel.setAdapter(adapter)
+        binding.actModel.setText(modelNames[0], false)
+        binding.actModel.inputType = android.text.InputType.TYPE_NULL
+
+        // "打开 openrouter.ai/keys" link
+        binding.tvOpenOpenrouter.setOnClickListener {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://openrouter.ai/keys")))
+            } catch (e: Exception) {
+                Toast.makeText(this, "无法打开浏览器", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * Toggle advanced options (other providers).
+     */
+    private fun setupAdvancedToggle() {
+        binding.tvAdvanced.setOnClickListener {
+            advancedExpanded = !advancedExpanded
+            binding.layoutAdvanced.visibility = if (advancedExpanded) View.VISIBLE else View.GONE
+            binding.tvAdvanced.text = if (advancedExpanded) {
+                "⚙️ 收起高级选项"
+            } else {
+                "⚙️ 使用其他服务商（Anthropic / OpenAI / 自定义）"
+            }
+
+            // If collapsing, reset to OpenRouter
+            if (!advancedExpanded && selectedProvider != "openrouter") {
+                selectedProvider = "openrouter"
+                binding.chipOpenrouter.isChecked = true
+                applyProviderPreset("openrouter")
+            }
+        }
     }
 
     private fun setupProviderSelection() {
@@ -146,39 +177,45 @@ class ModelSetupActivity : AppCompatActivity() {
         val preset = PROVIDERS[providerKey] ?: return
 
         binding.apply {
-            // Set base URL
-            etSetupApiBase.setText(preset.baseUrl)
+            // API Key hint
+            tilApiKey.hint = when (providerKey) {
+                "openrouter" -> "OpenRouter API Key"
+                "anthropic" -> "Anthropic API Key"
+                "openai" -> "OpenAI API Key"
+                else -> "API Key"
+            }
+            (tilApiKey as? com.google.android.material.textfield.TextInputLayout)?.helperText = when (providerKey) {
+                "openrouter" -> "以 sk-or- 开头"
+                "anthropic" -> "以 sk-ant- 开头"
+                "openai" -> "以 sk- 开头"
+                else -> null
+            }
 
-            // Custom provider: make base URL editable and show it
+            // Base URL
+            etSetupApiBase.setText(preset.baseUrl)
             if (providerKey == "custom") {
                 tilApiBase.visibility = View.VISIBLE
                 etSetupApiBase.isEnabled = true
             } else {
-                tilApiBase.visibility = View.VISIBLE
-                etSetupApiBase.isEnabled = false  // Lock preset URL
+                tilApiBase.visibility = View.GONE
+                etSetupApiBase.isEnabled = false
             }
 
-            // Set hint text
+            // Provider hint
             tvProviderHint.text = preset.hint
+            tvProviderHint.visibility = if (advancedExpanded) View.VISIBLE else View.GONE
 
-            // Populate model dropdown
+            // Model dropdown
             val modelNames = preset.models.map { it.displayName }
-            val adapter = ArrayAdapter(
-                this@ModelSetupActivity,
-                android.R.layout.simple_dropdown_item_1line,
-                modelNames
-            )
+            val adapter = ArrayAdapter(this@ModelSetupActivity, android.R.layout.simple_dropdown_item_1line, modelNames)
             actModel.setAdapter(adapter)
-
-            // Select first model
             if (modelNames.isNotEmpty()) {
                 actModel.setText(modelNames[0], false)
             }
 
-            // For custom provider, allow free text model input
             if (providerKey == "custom") {
                 actModel.inputType = android.text.InputType.TYPE_CLASS_TEXT
-                actModel.threshold = 100  // Effectively disable dropdown filtering
+                actModel.threshold = 100
             } else {
                 actModel.inputType = android.text.InputType.TYPE_NULL
                 actModel.threshold = 1
@@ -200,7 +237,6 @@ class ModelSetupActivity : AppCompatActivity() {
 
     private fun saveAndFinish() {
         val apiKey = binding.etSetupApiKey.text?.toString()?.trim()
-        val apiBase = binding.etSetupApiBase.text?.toString()?.trim()
         val selectedModelDisplay = binding.actModel.text?.toString()?.trim()
 
         // Validate
@@ -210,13 +246,19 @@ class ModelSetupActivity : AppCompatActivity() {
         }
         binding.tilApiKey.error = null
 
+        // For advanced/custom mode
+        val apiBase = if (advancedExpanded) {
+            binding.etSetupApiBase.text?.toString()?.trim()
+        } else {
+            null
+        }
+
         if (selectedProvider == "custom" && apiBase.isNullOrEmpty()) {
             binding.tilApiBase.error = "请输入 API Base URL"
             return
         }
-        binding.tilApiBase.error = null
 
-        // Resolve model ID from display name
+        // Resolve model ID
         val preset = PROVIDERS[selectedProvider] ?: return
         val modelId = if (selectedProvider == "custom") {
             selectedModelDisplay ?: ""
@@ -227,10 +269,8 @@ class ModelSetupActivity : AppCompatActivity() {
         }
 
         try {
-            // Load current config
             val config = configLoader.loadOpenClawConfig()
 
-            // Build updated provider
             val providerName = if (selectedProvider == "custom") "custom" else selectedProvider
             val newProvider = ProviderConfig(
                 baseUrl = apiBase ?: preset.baseUrl,
@@ -248,12 +288,10 @@ class ModelSetupActivity : AppCompatActivity() {
                 authHeader = preset.authHeader
             )
 
-            // Merge into existing providers (don't wipe others)
             val existingModels = config.models ?: ModelsConfig()
             val updatedProviders = existingModels.providers.toMutableMap()
             updatedProviders[providerName] = newProvider
 
-            // Set default model
             val defaultModelId = if (selectedProvider == "custom") {
                 "custom/$modelId"
             } else {
@@ -270,12 +308,11 @@ class ModelSetupActivity : AppCompatActivity() {
                 agents = updatedAgents
             )
 
-            // Save
             configLoader.saveOpenClawConfig(updatedConfig)
 
             Log.i(TAG, "✅ 模型配置已保存: provider=$providerName, model=$modelId")
             markSetupSeen()
-            Toast.makeText(this, "配置已保存，开始使用吧！", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "✅ 配置完成！", Toast.LENGTH_SHORT).show()
             finish()
 
         } catch (e: Exception) {
@@ -284,9 +321,6 @@ class ModelSetupActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Mark setup as completed so it won't show again.
-     */
     private fun markSetupSeen() {
         try {
             val mmkv = com.tencent.mmkv.MMKV.defaultMMKV()
@@ -296,14 +330,13 @@ class ModelSetupActivity : AppCompatActivity() {
         }
     }
 
-    // Internal data classes
     private data class ProviderPreset(
         val name: String,
         val baseUrl: String,
         val api: String,
         val hint: String,
         val models: List<ModelPreset>,
-        val authHeader: Boolean = true  // Default true: most providers use Authorization: Bearer header
+        val authHeader: Boolean = true
     )
 
     private data class ModelPreset(
