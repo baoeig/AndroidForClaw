@@ -197,6 +197,11 @@ class MainEntryAgentHandler(
                 "type" to "error",
                 "message" to update.message
             )
+            is ProgressUpdate.BlockReply -> mapOf(
+                "type" to "block_reply",
+                "text" to update.text,
+                "iteration" to update.iteration
+            )
         }
     }
 }

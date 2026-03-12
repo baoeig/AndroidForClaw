@@ -50,6 +50,7 @@ import com.xiaomo.androidforclaw.agent.tools.ToolRegistry
 import com.xiaomo.androidforclaw.agent.tools.AndroidToolRegistry
 import com.xiaomo.androidforclaw.agent.context.ContextBuilder
 import com.xiaomo.androidforclaw.agent.loop.AgentLoop
+import com.xiaomo.androidforclaw.agent.loop.ProgressUpdate
 import com.xiaomo.androidforclaw.providers.UnifiedLLMProvider
 
 /**
@@ -896,8 +897,12 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
                 feishuChannel?.removeReaction(event.messageId, typingReactionId)
             }
 
-            // 4. Send reply to Feishu
-            sendFeishuReply(event, response)
+            // 4. Send final reply to Feishu (skip if already sent via block reply)
+            if (response == "\u0000BLOCK_REPLY_ALREADY_SENT") {
+                Log.d(TAG, "✅ Final reply already sent via block reply, skipping")
+            } else {
+                sendFeishuReply(event, response)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "处理飞书消息失败", e)
             // Ensure reaction is removed (even if error occurs)
@@ -1197,6 +1202,26 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
                     testMode = "chat"
                 )
 
+                // ✅ Block Reply: send intermediate replies as they happen
+                // Aligned with OpenClaw's blockReplyBreak="text_end" mechanism
+                val blockRepliesSent = mutableListOf<String>()
+                val progressJob = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                    agentLoop.progressFlow.collect { update ->
+                        if (update is ProgressUpdate.BlockReply) {
+                            val text = update.text.trim()
+                            if (text.isNotEmpty()) {
+                                Log.i(TAG, "📤 Block reply (intermediate): ${text.take(100)}...")
+                                try {
+                                    sendFeishuReply(event, text)
+                                    blockRepliesSent.add(text)
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "发送中间回复失败: ${e.message}")
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Run AgentLoop (convert history messages)
                 val result = agentLoop.run(
                     systemPrompt = systemPrompt,
@@ -1204,6 +1229,9 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
                     contextHistory = contextHistory.map { it.toNewMessage() },
                     reasoningEnabled = true
                 )
+
+                // Stop progress listener
+                progressJob.cancel()
 
                 // Save messages to session (convert back to old format)
                 result.messages.forEach { message ->
@@ -1215,9 +1243,17 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
                 Log.i(TAG, "✅ Agent 处理完成")
                 Log.i(TAG, "   迭代次数: ${result.iterations}")
                 Log.i(TAG, "   使用工具: ${result.toolsUsed.joinToString(", ")}")
+                Log.i(TAG, "   中间回复: ${blockRepliesSent.size} 条")
 
-                // Return result
-                result.finalContent ?: "抱歉，我无法处理这个请求。"
+                // Return final result
+                // If block replies were sent and final content matches last block reply, skip it
+                val finalContent = result.finalContent ?: "抱歉，我无法处理这个请求。"
+                if (blockRepliesSent.isNotEmpty() && blockRepliesSent.last().trim() == finalContent.trim()) {
+                    Log.i(TAG, "📤 Final content matches last block reply, marking as already sent")
+                    "\u0000BLOCK_REPLY_ALREADY_SENT"  // Sentinel value, caller will check
+                } else {
+                    finalContent
+                }
 
             } catch (e: Exception) {
                 Log.e(TAG, "Agent 处理失败", e)

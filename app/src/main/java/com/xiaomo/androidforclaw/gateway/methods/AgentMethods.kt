@@ -242,6 +242,13 @@ Instructions:
                             // Error already sent via agent.error event
                             Log.w(TAG, "Progress error: ${progress.message}")
                         }
+                        is ProgressUpdate.BlockReply -> {
+                            Log.d(TAG, "📤 Block reply: ${progress.text.take(100)}")
+                            com.xiaomo.androidforclaw.gateway.GatewayServer.getInstance()?.broadcast("agent.block_reply", mapOf(
+                                "text" to progress.text,
+                                "iteration" to progress.iteration
+                            ))
+                        }
                     }
                 }
                 .launchIn(agentScope)

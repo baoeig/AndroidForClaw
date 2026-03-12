@@ -375,6 +375,14 @@ class AgentLoop(
                 if (response.toolCalls != null && response.toolCalls.isNotEmpty()) {
                     writeLog("Function calls: ${response.toolCalls.size}")
 
+                    // ✅ Block Reply: emit intermediate text immediately
+                    // Aligned with OpenClaw blockReplyBreak="text_end"
+                    val intermediateText = response.content?.trim()
+                    if (!intermediateText.isNullOrEmpty()) {
+                        writeLog("📤 Block reply (intermediate text): ${intermediateText.take(200)}...")
+                        _progressFlow.emit(ProgressUpdate.BlockReply(intermediateText, iteration))
+                    }
+
                     // Add assistant message (containing function calls)
                     messages.add(
                         assistantMessage(
@@ -780,4 +788,14 @@ sealed class ProgressUpdate {
         val message: String,
         val critical: Boolean
     ) : ProgressUpdate()
+
+    /**
+     * Intermediate text reply (block reply).
+     *
+     * Aligned with OpenClaw's blockReplyBreak="text_end" mechanism:
+     * When LLM returns text + tool_calls in the same response,
+     * the text is emitted immediately as an intermediate reply
+     * (not held until the final answer).
+     */
+    data class BlockReply(val text: String, val iteration: Int) : ProgressUpdate()
 }

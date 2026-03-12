@@ -59,6 +59,10 @@ object MainEntryNew {
     private var currentTaskId: String? = null
     private var currentDocId: String? = null
     private var job: Job? = null
+    @Volatile
+    private var activeSessionId: String? = null  // For block reply broadcasting
+    @Volatile
+    private var lastBlockReplyText: String? = null  // Track last sent block reply to avoid duplicate final
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val taskDataManager: TaskDataManager = TaskDataManager.getInstance()
 
@@ -192,6 +196,8 @@ object MainEntryNew {
         }
 
         val effectiveSessionId = sessionId ?: "default"
+        activeSessionId = effectiveSessionId  // Set for block reply broadcasting
+        lastBlockReplyText = null  // Reset block reply tracking
         Log.d(TAG, "🆔 [Session] Session ID: $effectiveSessionId")
 
         // Get or create session
@@ -249,13 +255,18 @@ object MainEntryNew {
                 Log.d(TAG, "Iterations: ${result.iterations}")
                 Log.d(TAG, "Final result: ${result.finalContent}")
 
-                // 5. Broadcast AI response
+                // 5. Broadcast AI response (skip if already sent via block reply)
                 if (result.finalContent.isNotEmpty()) {
-                    Log.d(TAG, "📤 [Broadcast] Broadcasting AI response...")
-                    com.xiaomo.androidforclaw.gateway.GatewayServer.broadcastChatMessage(
-                        effectiveSessionId, "assistant", result.finalContent
-                    )
+                    if (lastBlockReplyText?.trim() == result.finalContent.trim()) {
+                        Log.d(TAG, "✅ Final content matches last block reply, skipping broadcast")
+                    } else {
+                        Log.d(TAG, "📤 [Broadcast] Broadcasting AI response...")
+                        com.xiaomo.androidforclaw.gateway.GatewayServer.broadcastChatMessage(
+                            effectiveSessionId, "assistant", result.finalContent
+                        )
+                    }
                 }
+                lastBlockReplyText = null  // Reset for next run
 
                 // 6. Save messages to session (convert back to legacy format)
                 Log.d(TAG, "💾 [Session] Saving messages to session...")
@@ -532,6 +543,21 @@ object MainEntryNew {
                     title = "错误",
                     content = update.message.take(100)
                 )
+            }
+
+            is ProgressUpdate.BlockReply -> {
+                Log.d(TAG, "📤 Block reply: ${update.text.take(200)}")
+                SessionFloatWindow.updateSessionInfo(
+                    title = "中间回复",
+                    content = update.text.take(100) + if (update.text.length > 100) "..." else ""
+                )
+                // For Gateway WebUI sessions, broadcast intermediate text immediately
+                lastBlockReplyText = update.text
+                activeSessionId?.let { sessionId ->
+                    com.xiaomo.androidforclaw.gateway.GatewayServer.broadcastChatMessage(
+                        sessionId, "assistant", update.text
+                    )
+                }
             }
         }
     }
