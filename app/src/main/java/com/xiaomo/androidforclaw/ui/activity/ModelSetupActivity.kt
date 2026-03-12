@@ -260,16 +260,10 @@ class ModelSetupActivity : AppCompatActivity() {
                 "$providerName/$modelId"
             }
 
-            val updatedAgents = config.agents?.copy(
-                defaults = config.agents.defaults?.copy(
-                    model = config.agents.defaults.model?.copy(primary = defaultModelId)
-                        ?: com.xiaomo.androidforclaw.config.ModelSelectionConfig(primary = defaultModelId)
-                )
-            ) ?: com.xiaomo.androidforclaw.config.AgentsConfig(
-                defaults = com.xiaomo.androidforclaw.config.AgentDefaultsConfig(
-                    model = com.xiaomo.androidforclaw.config.ModelSelectionConfig(primary = defaultModelId)
-                )
-            )
+            val modelSelection = com.xiaomo.androidforclaw.config.ModelSelectionConfig(primary = defaultModelId)
+            val existingAgents = config.agents ?: com.xiaomo.androidforclaw.config.AgentsConfig()
+            val updatedDefaults = existingAgents.defaults.copy(model = modelSelection)
+            val updatedAgents = existingAgents.copy(defaults = updatedDefaults)
 
             val updatedConfig = config.copy(
                 models = existingModels.copy(providers = updatedProviders),
