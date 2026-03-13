@@ -28,6 +28,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     companion object {
         private const val TAG = "ChatViewModel"
         private const val SYNC_INTERVAL = 3000L // 3 seconds
+        private const val THINKING_SYNC_POLL_INTERVAL = 500L
+        private const val THINKING_MAX_WAIT_MS = 60_000L
     }
 
     // Single data source: SessionManager
@@ -223,20 +225,31 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         // Call MainEntryNew to execute
         viewModelScope.launch {
             val sessionId = currentSession.value.id
+            val startSyncedCount = sessionSyncState[sessionId] ?: 0
+            _isLoading.value = true
             Log.d(TAG, "🚀 [MainEntryNew] Execute (session: $sessionId)...")
 
-            com.xiaomo.androidforclaw.core.MainEntryNew.runWithSession(
-                userInput = content,
-                sessionId = sessionId,  // 直接使用当前 session ID，不转换为 "default"
-                application = getApplication()
-            )
+            try {
+                com.xiaomo.androidforclaw.core.MainEntryNew.runWithSession(
+                    userInput = content,
+                    sessionId = sessionId,  // 直接使用当前 session ID，不转换为 "default"
+                    application = getApplication()
+                )
 
-            // Wait a moment before removing thinking message
-            delay(500)
-            uiSessionManager.removeMessageFromCurrentSession(thinkingMessage.id)
-
-            // Force sync from backend to get AI response
-            syncFromBackend()
+                val startedAt = System.currentTimeMillis()
+                while (System.currentTimeMillis() - startedAt < THINKING_MAX_WAIT_MS) {
+                    syncFromBackend()
+                    val currentSyncedCount = sessionSyncState[sessionId] ?: 0
+                    if (currentSyncedCount > startSyncedCount) {
+                        break
+                    }
+                    delay(THINKING_SYNC_POLL_INTERVAL)
+                }
+            } finally {
+                uiSessionManager.removeMessageFromCurrentSession(thinkingMessage.id)
+                _isLoading.value = false
+                syncFromBackend()
+            }
         }
 
         // Auto-generate session title
