@@ -12,7 +12,7 @@ import android.provider.Settings
 import android.util.Log
 import android.view.LayoutInflater
 import android.widget.Toast
-import com.xiaomo.androidforclaw.accessibility.databinding.ActivityPermissionsBinding
+import com.xiaomo.androidforclaw.accessibility.databinding.ActivityObserverPermissionsBinding
 import kotlinx.coroutines.*
 import java.io.File
 
@@ -35,7 +35,7 @@ class PermissionActivity : Activity() {
         private const val STATUS_CHECK_INTERVAL = 2000L  // 2秒检查一次 (降低频率)
     }
 
-    private lateinit var binding: ActivityPermissionsBinding
+    private lateinit var binding: ActivityObserverPermissionsBinding
     private val mainHandler = Handler(Looper.getMainLooper())
 
     // Coroutine scope for this activity
@@ -59,7 +59,7 @@ class PermissionActivity : Activity() {
         val screenshotDir = File(workspace, "screenshots")
         MediaProjectionHelper.initialize(this, screenshotDir)
 
-        binding = ActivityPermissionsBinding.inflate(LayoutInflater.from(this))
+        binding = ActivityObserverPermissionsBinding.inflate(LayoutInflater.from(this))
         setContentView(binding.root)
 
         setupViews()

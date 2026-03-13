@@ -1,6 +1,7 @@
 package com.xiaomo.androidforclaw.ui.activity
 
 import android.content.Intent
+import android.content.ComponentName
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
@@ -26,6 +27,20 @@ import kotlinx.coroutines.launch
  * - openclaw sessions → Session list
  */
 class MainActivity : AppCompatActivity() {
+
+    private fun launchObserverPermissionActivity() {
+        try {
+            startActivity(Intent().apply {
+                component = ComponentName(
+                    "com.xiaomo.androidforclaw",
+                    "com.xiaomo.androidforclaw.accessibility.PermissionActivity"
+                )
+            })
+        } catch (e: Exception) {
+            android.util.Log.w(TAG, "Observer PermissionActivity unavailable, fallback to local PermissionsActivity", e)
+            startActivity(Intent(this, PermissionsActivity::class.java))
+        }
+    }
 
     private lateinit var binding: ActivityMainBinding
     private val mmkv by lazy { MMKV.defaultMMKV() }
@@ -65,7 +80,7 @@ class MainActivity : AppCompatActivity() {
 
             // Permissions card
             cardPermissions.setOnClickListener {
-                startActivity(Intent(this@MainActivity, PermissionsActivity::class.java))
+                launchObserverPermissionActivity()
             }
 
             // Skills card

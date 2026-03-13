@@ -411,7 +411,7 @@ object MediaProjectionHelper {
      */
     private fun startForegroundService(context: Context) {
         try {
-            val intent = Intent(context, ForegroundService::class.java)
+            val intent = Intent(context, ObserverForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -428,7 +428,7 @@ object MediaProjectionHelper {
      */
     private fun stopForegroundService(context: Context) {
         try {
-            val intent = Intent(context, ForegroundService::class.java)
+            val intent = Intent(context, ObserverForegroundService::class.java)
             context.stopService(intent)
             isForegroundServiceRunning.set(false)
             Log.i(TAG, "✅ Foreground service stopped")

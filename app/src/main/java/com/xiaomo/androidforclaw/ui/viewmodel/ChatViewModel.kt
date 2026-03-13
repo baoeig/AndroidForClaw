@@ -1,6 +1,7 @@
 package com.xiaomo.androidforclaw.ui.viewmodel
 
 import android.app.Application
+import com.xiaomo.androidforclaw.core.MainEntryNew
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -63,11 +64,38 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             initialize()
         }
 
+        observeAgentProgress()
+
         // Periodically sync messages from backend (smart sync, only update when new messages arrive)
         viewModelScope.launch {
             while (true) {
                 delay(SYNC_INTERVAL)
                 syncFromBackend()
+            }
+        }
+    }
+
+    private var lastProgressContent: String? = null
+    private var thinkingShownForCurrentRun: Boolean = false
+
+    private fun observeAgentProgress() {
+        viewModelScope.launch {
+            MainEntryNew.uiProgressFlow.collect { event ->
+                val rendered = when (event.type) {
+                    "thinking", "iteration" -> "正在思考..."
+                    "tool_call" -> "${event.title}\n${event.content}"
+                    "tool_result" -> "${event.title}\n${event.content}"
+                    "block_reply" -> event.content
+                    "error" -> "${event.title}\n${event.content}"
+                    else -> "${event.title}\n${event.content}"
+                }.trim()
+
+                if (rendered.isBlank() || rendered == lastProgressContent) return@collect
+                lastProgressContent = rendered
+
+                uiSessionManager.addMessageToCurrentSession(
+                    ChatMessage(content = rendered, isUser = false, status = MessageStatus.SENT)
+                )
             }
         }
     }
@@ -202,6 +230,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (content.isBlank()) return
 
         Log.d(TAG, "💬 [Send] $content")
+        thinkingShownForCurrentRun = false
+        lastProgressContent = null
 
         // Record inbound
         channelManager.recordInbound()

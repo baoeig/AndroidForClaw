@@ -214,6 +214,7 @@ dependencies {
     // ========== Extensions ==========
     implementation project(':extensions:feishu')
     implementation project(':extensions:discord')
+    implementation project(':extensions:observer')
 
     // ========== Self-Control Module ==========
     implementation project(':self-control')

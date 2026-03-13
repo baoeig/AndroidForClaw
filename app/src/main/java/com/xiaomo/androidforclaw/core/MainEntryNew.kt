@@ -28,6 +28,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import android.os.Environment
 import java.io.File
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,6 +46,10 @@ import kotlinx.coroutines.launch
  */
 object MainEntryNew {
     private const val TAG = "MainEntryNew"
+    const val ACTION_AGENT_PROGRESS = "com.xiaomo.androidforclaw.ACTION_AGENT_PROGRESS"
+    const val EXTRA_PROGRESS_TYPE = "type"
+    const val EXTRA_PROGRESS_TITLE = "title"
+    const val EXTRA_PROGRESS_CONTENT = "content"
 
     // ================ Core Components ================
     private lateinit var application: Application
@@ -73,6 +79,15 @@ object MainEntryNew {
     // Test summary completion state
     private val _summaryFinished = MutableStateFlow(false)
     val summaryFinished = _summaryFinished.asStateFlow()
+
+    data class UiProgressEvent(
+        val type: String,
+        val title: String,
+        val content: String
+    )
+
+    private val _uiProgressFlow = MutableSharedFlow<UiProgressEvent>(extraBufferCapacity = 64)
+    val uiProgressFlow: SharedFlow<UiProgressEvent> = _uiProgressFlow
 
     /**
      * Get SessionManager (for Gateway use)
@@ -449,6 +464,10 @@ object MainEntryNew {
         )
     }
 
+    private fun emitProgressToUi(type: String, title: String, content: String) {
+        _uiProgressFlow.tryEmit(UiProgressEvent(type, title, content))
+    }
+
     /**
      * Handle progress update - Only update floating window display
      */
@@ -461,6 +480,7 @@ object MainEntryNew {
                     title = "迭代 ${update.number}",
                     content = "正在思考..."
                 )
+                emitProgressToUi("iteration", "迭代 ${update.number}", "正在思考...")
             }
 
             is ProgressUpdate.Thinking -> {
@@ -469,6 +489,7 @@ object MainEntryNew {
                     title = "正在思考",
                     content = "正在处理第 ${update.iteration} 步..."
                 )
+                emitProgressToUi("thinking", "正在思考", "正在处理第 ${update.iteration} 步...")
             }
 
             is ProgressUpdate.Reasoning -> {
@@ -494,6 +515,7 @@ object MainEntryNew {
                     title = "执行: ${update.name}",
                     content = argsText.take(100)
                 )
+                emitProgressToUi("tool_call", "执行: ${update.name}", argsText)
             }
 
             is ProgressUpdate.ToolResult -> {
@@ -502,6 +524,7 @@ object MainEntryNew {
                     title = "执行完成",
                     content = update.result.take(100) + if (update.result.length > 100) "..." else ""
                 )
+                emitProgressToUi("tool_result", "执行完成", update.result)
             }
 
             is ProgressUpdate.IterationComplete -> {
@@ -543,6 +566,7 @@ object MainEntryNew {
                     title = "错误",
                     content = update.message.take(100)
                 )
+                emitProgressToUi("error", "错误", update.message)
             }
 
             is ProgressUpdate.BlockReply -> {
@@ -551,6 +575,7 @@ object MainEntryNew {
                     title = "中间回复",
                     content = update.text.take(100) + if (update.text.length > 100) "..." else ""
                 )
+                emitProgressToUi("block_reply", "中间回复", update.text)
                 // For Gateway WebUI sessions, broadcast intermediate text immediately
                 lastBlockReplyText = update.text
                 activeSessionId?.let { sessionId ->
