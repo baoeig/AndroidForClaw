@@ -1,15 +1,6 @@
 package com.xiaomo.androidforclaw.agent.tools
 
-/**
- * OpenClaw Source Reference:
- * - ../openclaw/src/agents/tools/(all)
- *
- * AndroidForClaw adaptation: agent tool implementation.
- */
-
-
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.util.Log
 import com.xiaomo.androidforclaw.providers.FunctionDefinition
@@ -17,43 +8,43 @@ import com.xiaomo.androidforclaw.providers.ParametersSchema
 import com.xiaomo.androidforclaw.providers.PropertySchema
 import com.xiaomo.androidforclaw.providers.ToolDefinition
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.io.File
+import kotlinx.coroutines.withTimeout
+import net.schmizz.sshj.SSHClient
+import net.schmizz.sshj.transport.verification.PromiscuousVerifier
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 /**
- * TermuxBridge Tool - Execute code in Termux environment
+ * TermuxBridge Tool - Execute commands in Termux via SSH
+ *
+ * Communication: SSH to Termux's sshd on localhost:8022
  *
  * Requirements:
- * - Termux installed from F-Droid or GitHub
- * - Termux:API installed
- * - phoneforclaw_server.py running in Termux
+ * - Termux installed (F-Droid or GitHub)
+ * - openssh installed in Termux: pkg install openssh
+ * - sshd running in Termux: sshd
+ * - Password set in Termux: passwd
  *
- * Supported runtimes:
- * - python: Python 3.x
- * - nodejs: Node.js
- * - shell: Bash shell
+ * Optional:
+ * - Termux:API for extra capabilities
  */
 class TermuxBridgeTool(private val context: Context) : Tool {
     companion object {
         private const val TAG = "TermuxBridgeTool"
         private const val TERMUX_PACKAGE = "com.termux"
-        private const val TERMUX_API_PACKAGE = "com.termux.api"
+        private const val SSH_HOST = "127.0.0.1"
+        private const val SSH_PORT = 8022
+        private const val SSH_USER = "u0_a" // Termux default user prefix; will try common patterns
+        private const val DEFAULT_TIMEOUT_S = 60
 
-        // 共享目录
-        private const val SHARED_DIR = "/sdcard/.androidforclaw/.ipc"
-        private const val REQUEST_FILE = "$SHARED_DIR/request.json"
-        private const val RESPONSE_FILE = "$SHARED_DIR/response.json"
-        private const val LOCK_FILE = "$SHARED_DIR/server.lock"
-
-        // 超时配置
-        private const val DEFAULT_TIMEOUT_MS = 60_000L // 60 秒
-        private const val POLL_INTERVAL_MS = 500L
+        // Config file for SSH credentials
+        private const val CONFIG_DIR = "/sdcard/.androidforclaw"
+        private const val SSH_CONFIG_FILE = "$CONFIG_DIR/termux_ssh.json"
     }
 
     override val name = "exec"
-    override val description = "Run shell commands via Termux when available"
+    override val description = "Run shell commands via Termux SSH bridge"
 
     override fun getToolDefinition(): ToolDefinition {
         return ToolDefinition(
@@ -78,8 +69,8 @@ class TermuxBridgeTool(private val context: Context) : Tool {
                         ),
                         "action" to PropertySchema(
                             type = "string",
-                            description = "Compatibility action: exec (default) or setup_storage",
-                            enum = listOf("exec", "setup_storage")
+                            description = "Action: exec (default) or setup",
+                            enum = listOf("exec", "setup")
                         ),
                         "runtime" to PropertySchema(
                             type = "string",
@@ -101,11 +92,8 @@ class TermuxBridgeTool(private val context: Context) : Tool {
         )
     }
 
-    fun isAvailable(): Boolean = isTermuxInstalled()
+    fun isAvailable(): Boolean = isTermuxInstalled() && isSSHReachable()
 
-    /**
-     * 检查 Termux 是否已安装
-     */
     private fun isTermuxInstalled(): Boolean {
         return try {
             context.packageManager.getPackageInfo(TERMUX_PACKAGE, 0)
@@ -116,118 +104,138 @@ class TermuxBridgeTool(private val context: Context) : Tool {
     }
 
     /**
-     * 检查 Termux:API 是否已安装
+     * Quick check if SSH port is reachable
      */
-    private fun isTermuxApiInstalled(): Boolean {
+    private fun isSSHReachable(): Boolean {
         return try {
-            context.packageManager.getPackageInfo(TERMUX_API_PACKAGE, 0)
-            true
-        } catch (e: PackageManager.NameNotFoundException) {
+            java.net.Socket().use { socket ->
+                socket.connect(java.net.InetSocketAddress(SSH_HOST, SSH_PORT), 1000)
+                true
+            }
+        } catch (e: Exception) {
             false
         }
     }
 
     /**
-     * 检查 RPC 服务器是否运行
+     * Load SSH credentials from config file
      */
-    private fun isServerRunning(): Boolean {
-        return File(LOCK_FILE).exists()
+    private fun loadSSHConfig(): SSHConfig {
+        try {
+            val file = java.io.File(SSH_CONFIG_FILE)
+            if (file.exists()) {
+                val json = org.json.JSONObject(file.readText())
+                return SSHConfig(
+                    host = json.optString("host", SSH_HOST),
+                    port = json.optInt("port", SSH_PORT),
+                    user = json.optString("user", ""),
+                    password = json.optString("password", ""),
+                    keyFile = json.optString("key_file", "")
+                )
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load SSH config: ${e.message}")
+        }
+        return SSHConfig()
     }
 
     /**
-     * 发送请求到 Termux
+     * Create and connect SSH client
      */
-    private suspend fun sendRequest(request: JSONObject): JSONObject = withContext(Dispatchers.IO) {
-        try {
-            // 确保共享目录存在
-            val sharedDir = File(SHARED_DIR)
-            if (!sharedDir.exists()) {
-                sharedDir.mkdirs()
+    private fun createSSHClient(config: SSHConfig): SSHClient {
+        val client = SSHClient()
+        client.addHostKeyVerifier(PromiscuousVerifier()) // localhost, safe to skip verification
+        client.connectTimeout = 10_000
+        client.connect(config.host, config.port)
+
+        when {
+            config.keyFile.isNotEmpty() -> {
+                val keyProvider = client.loadKeys(config.keyFile)
+                client.authPublickey(config.user, keyProvider)
             }
-
-            // 清理旧的响应文件
-            val responseFile = File(RESPONSE_FILE)
-            if (responseFile.exists()) {
-                responseFile.delete()
+            config.password.isNotEmpty() -> {
+                client.authPassword(config.user, config.password)
             }
-
-            // 写入请求文件
-            val requestFile = File(REQUEST_FILE)
-            requestFile.writeText(request.toString(2))
-            Log.d(TAG, "Request written to $REQUEST_FILE")
-
-            // 使用 Termux:API 通知服务器（可选，服务器会轮询）
-            notifyTermux("PhoneForClaw: New task")
-
-            // 轮询等待响应
-            val timeoutMs = request.optInt("timeout", 60) * 1000L
-            val maxAttempts = (timeoutMs / POLL_INTERVAL_MS).toInt()
-            var attempts = 0
-
-            while (attempts < maxAttempts) {
-                if (responseFile.exists()) {
-                    // 读取响应
-                    val responseText = responseFile.readText()
-                    val response = JSONObject(responseText)
-
-                    // 清理文件
-                    responseFile.delete()
-                    if (requestFile.exists()) {
-                        requestFile.delete()
+            else -> {
+                // Try key-based auth with default key locations
+                val homeDir = "/sdcard/.androidforclaw"
+                val keyPaths = listOf(
+                    "$homeDir/termux_id_rsa",
+                    "$homeDir/id_rsa",
+                    "/data/data/${context.packageName}/files/termux_id_rsa"
+                )
+                var authenticated = false
+                for (keyPath in keyPaths) {
+                    try {
+                        val keyFile = java.io.File(keyPath)
+                        if (keyFile.exists()) {
+                            val keyProvider = client.loadKeys(keyPath)
+                            client.authPublickey(config.user.ifEmpty { "shell" }, keyProvider)
+                            authenticated = true
+                            break
+                        }
+                    } catch (e: Exception) {
+                        Log.d(TAG, "Key auth failed with $keyPath: ${e.message}")
                     }
+                }
+                if (!authenticated) {
+                    throw IOException(
+                        "SSH authentication failed. Please configure credentials:\n" +
+                        "1. Set password in Termux: passwd\n" +
+                        "2. Create config: echo '{\"user\":\"u0_aXXX\",\"password\":\"YOUR_PASS\"}' > $SSH_CONFIG_FILE\n" +
+                        "   (Find your user with: whoami in Termux)"
+                    )
+                }
+            }
+        }
+        return client
+    }
 
-                    Log.d(TAG, "Response received after ${attempts * POLL_INTERVAL_MS}ms")
-                    return@withContext response
+    /**
+     * Execute a command via SSH and return stdout/stderr/exitCode
+     */
+    private fun sshExec(command: String, cwd: String?, timeoutS: Int): SSHResult {
+        val config = loadSSHConfig()
+        val client = createSSHClient(config)
+
+        try {
+            val session = client.startSession()
+            try {
+                val fullCommand = if (cwd != null) {
+                    "cd ${shellEscape(cwd)} && $command"
+                } else {
+                    command
                 }
 
-                delay(POLL_INTERVAL_MS)
-                attempts++
-            }
+                val cmd = session.exec(fullCommand)
+                cmd.join(timeoutS.toLong(), TimeUnit.SECONDS)
 
-            // 超时
-            if (requestFile.exists()) {
-                requestFile.delete()
-            }
+                val stdout = cmd.inputStream.bufferedReader().readText()
+                val stderr = cmd.errorStream.bufferedReader().readText()
+                val exitCode = cmd.exitStatus ?: -1
 
-            JSONObject().apply {
-                put("success", false)
-                put("error", "Timeout waiting for Termux response (${timeoutMs}ms)")
+                return SSHResult(
+                    success = exitCode == 0,
+                    stdout = stdout,
+                    stderr = stderr,
+                    exitCode = exitCode
+                )
+            } finally {
+                session.close()
             }
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Communication failed", e)
-            JSONObject().apply {
-                put("success", false)
-                put("error", "Communication failed: ${e.message}")
-            }
+        } finally {
+            client.disconnect()
         }
     }
 
-    /**
-     * 使用 Termux:API 发送通知（可选）
-     */
-    private fun notifyTermux(message: String) {
-        try {
-            // 通过 termux-toast 发送通知（需要 Termux:API）
-            // 注意：这需要 Termux 服务器监听通知，当前实现使用轮询所以这是可选的
-            val intent = Intent().apply {
-                action = "com.termux.RUN_COMMAND"
-                setClassName(TERMUX_PACKAGE, "com.termux.app.RunCommandService")
-                putExtra("com.termux.RUN_COMMAND_PATH", "/data/data/com.termux/files/usr/bin/termux-toast")
-                putExtra("com.termux.RUN_COMMAND_ARGUMENTS", arrayOf("-s", message))
-                putExtra("com.termux.RUN_COMMAND_BACKGROUND", true)
-            }
-            context.startService(intent)
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to notify Termux: ${e.message}")
-        }
+    private fun shellEscape(s: String): String {
+        return "'" + s.replace("'", "'\\''") + "'"
     }
 
     override suspend fun execute(args: Map<String, Any?>): ToolResult {
-        // 0. 解析 action
         val action = args["action"] as? String ?: "exec"
 
-        // 1. 检查 Termux
+        // 1. Check Termux installed
         if (!isTermuxInstalled()) {
             return ToolResult(
                 success = false,
@@ -241,167 +249,147 @@ class TermuxBridgeTool(private val context: Context) : Tool {
             )
         }
 
-        // 2. 检查 Termux:API
-        if (!isTermuxApiInstalled()) {
+        // 2. Handle setup action
+        if (action == "setup") {
+            return handleSetup()
+        }
+
+        // 3. Check SSH reachable
+        if (!isSSHReachable()) {
             return ToolResult(
                 success = false,
                 content = buildString {
-                    appendLine("❌ Termux:API not installed")
+                    appendLine("❌ Termux SSH server not reachable (localhost:$SSH_PORT)")
                     appendLine()
-                    appendLine("Please install Termux:API:")
-                    appendLine("• F-Droid: https://f-droid.org/packages/com.termux.api/")
-                    appendLine("• GitHub: https://github.com/termux/termux-api/releases")
+                    appendLine("Please setup SSH in Termux:")
+                    appendLine("  1. Open Termux")
+                    appendLine("  2. Run: pkg install openssh")
+                    appendLine("  3. Run: passwd  (set a password)")
+                    appendLine("  4. Run: sshd")
+                    appendLine("  5. Run: whoami  (note your username)")
                     appendLine()
-                    appendLine("Then run in Termux:")
-                    appendLine("  pkg install termux-api")
+                    appendLine("Then configure credentials:")
+                    appendLine("  echo '{\"user\":\"YOUR_USER\",\"password\":\"YOUR_PASS\"}' > $SSH_CONFIG_FILE")
                 }
             )
         }
 
-        // 3. 检查 RPC 服务器
-        if (!isServerRunning()) {
-            return ToolResult(
-                success = false,
-                content = buildString {
-                    appendLine("❌ PhoneForClaw Bridge Server not running")
-                    appendLine()
-                    appendLine("Please start the server in Termux:")
-                    appendLine("  bash ~/start_bridge.sh")
-                    appendLine()
-                    appendLine("Setup instructions:")
-                    appendLine("  https://github.com/xiaomochn/AndroidForClaw/blob/main/docs/termux-integration/README.md")
-                }
-            )
-        }
-
-        // 4. 处理特殊 action
-        if (action == "setup_storage") {
-            // 设置存储权限
-            val request = JSONObject().apply {
-                put("action", "setup_storage")
-            }
-
-            val response = sendRequest(request)
-            val success = response.optBoolean("success", false)
-            val message = response.optString("message", "")
-            val error = response.optString("error", "")
-
-            return if (success) {
-                ToolResult(
-                    success = true,
-                    content = buildString {
-                        appendLine("✅ Storage access setup initiated")
-                        appendLine()
-                        appendLine(message)
-                        appendLine()
-                        appendLine("After granting permission, you can access:")
-                        appendLine("• /sdcard/ - Shared storage")
-                        appendLine("• ~/storage/shared/ - Link to /sdcard/")
-                        appendLine("• ~/storage/downloads/ - Downloads folder")
-                        appendLine("• ~/storage/dcim/ - Camera photos")
-                    }
-                )
-            } else {
-                ToolResult.error(error.ifEmpty { "Failed to setup storage access" })
-            }
-        }
-
-        // 5. 处理 exec action - 对齐 OpenClaw exec(command, working_dir)
+        // 4. Resolve command
         val command = args["command"] as? String
         val runtime = args["runtime"] as? String
         val code = args["code"] as? String
         val cwd = (args["working_dir"] as? String) ?: (args["cwd"] as? String)
-        val timeout = (args["timeout"] as? Number)?.toInt() ?: 60
+        val timeout = (args["timeout"] as? Number)?.toInt() ?: DEFAULT_TIMEOUT_S
 
-        val (resolvedRuntime, resolvedCode) = when {
-            !command.isNullOrBlank() -> "shell" to command
-            !runtime.isNullOrBlank() && !code.isNullOrBlank() -> runtime to code
+        val resolvedCommand = when {
+            !command.isNullOrBlank() -> command
+            !runtime.isNullOrBlank() && !code.isNullOrBlank() -> {
+                when (runtime) {
+                    "python" -> "python3 -c ${shellEscape(code)}"
+                    "nodejs" -> "node -e ${shellEscape(code)}"
+                    "shell" -> code
+                    else -> return ToolResult.error("Invalid runtime: $runtime (use python/nodejs/shell)")
+                }
+            }
             else -> return ToolResult.error("Missing required parameter: command")
         }
 
-        if (resolvedRuntime !in listOf("python", "nodejs", "shell")) {
-            return ToolResult.error("Invalid runtime: $resolvedRuntime (use python/nodejs/shell)")
-        }
+        // 5. Execute via SSH
+        return withContext(Dispatchers.IO) {
+            try {
+                withTimeout(timeout * 1000L + 5000L) {
+                    val result = sshExec(resolvedCommand, cwd, timeout)
+                    Log.d(TAG, "SSH exec completed: exitCode=${result.exitCode}, stdout=${result.stdout.length} chars")
 
-        // 6. 构建请求
-        val request = JSONObject().apply {
-            put("action", "exec")
-            put("runtime", resolvedRuntime)
-            put("code", resolvedCode)
-            put("args", JSONObject().apply {
-                if (cwd != null) put("cwd", cwd)
-                put("timeout", timeout)
-            })
-        }
-
-        Log.d(TAG, "Executing via Termux runtime=$resolvedRuntime (${resolvedCode.length} chars)")
-
-        // 7. 发送请求
-        val response = sendRequest(request)
-
-        // 8. 解析响应
-        val success = response.optBoolean("success", false)
-        val stdout = response.optString("stdout", "")
-        val stderr = response.optString("stderr", "")
-        val returncode = response.optInt("returncode", -1)
-        val error = response.optString("error", "")
-
-        return if (success) {
-            ToolResult(
-                success = true,
-                content = buildString {
-                    if (stdout.isNotEmpty()) {
-                        appendLine(stdout.trim())
-                    }
-                    if (stderr.isNotEmpty()) {
-                        if (isNotEmpty()) appendLine()
-                        appendLine("STDERR:")
-                        appendLine(stderr.trim())
-                    }
-                    if (returncode != 0) {
-                        if (isNotEmpty()) appendLine()
-                        appendLine("Exit code: $returncode")
-                    }
-                }.ifEmpty { "(no output)" },
-                metadata = mapOf(
-                    "backend" to "termux",
-                    "stdout" to stdout,
-                    "stderr" to stderr,
-                    "exitCode" to returncode,
-                    "runtime" to resolvedRuntime,
-                    "working_dir" to (cwd ?: ""),
-                    "command" to (command ?: "")
+                    ToolResult(
+                        success = result.success,
+                        content = buildString {
+                            if (result.stdout.isNotEmpty()) {
+                                appendLine(result.stdout.trim())
+                            }
+                            if (result.stderr.isNotEmpty()) {
+                                if (isNotEmpty()) appendLine()
+                                appendLine("STDERR:")
+                                appendLine(result.stderr.trim())
+                            }
+                            if (result.exitCode != 0) {
+                                if (isNotEmpty()) appendLine()
+                                appendLine("Exit code: ${result.exitCode}")
+                            }
+                        }.ifEmpty { "(no output)" },
+                        metadata = mapOf(
+                            "backend" to "termux",
+                            "transport" to "ssh",
+                            "stdout" to result.stdout,
+                            "stderr" to result.stderr,
+                            "exitCode" to result.exitCode,
+                            "command" to resolvedCommand,
+                            "working_dir" to (cwd ?: "")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "SSH exec failed", e)
+                ToolResult(
+                    success = false,
+                    content = "SSH exec failed: ${e.message}",
+                    metadata = mapOf(
+                        "backend" to "termux",
+                        "transport" to "ssh",
+                        "error" to (e.message ?: "unknown"),
+                        "command" to resolvedCommand,
+                        "working_dir" to (cwd ?: "")
+                    )
                 )
-            )
-        } else {
-            ToolResult(
-                success = false,
-                content = buildString {
-                    if (error.isNotEmpty()) {
-                        appendLine("Error: $error")
-                    }
-                    if (stderr.isNotEmpty()) {
-                        if (isNotEmpty()) appendLine()
-                        appendLine("STDERR:")
-                        appendLine(stderr.trim())
-                    }
-                    if (stdout.isNotEmpty()) {
-                        if (isNotEmpty()) appendLine()
-                        appendLine("STDOUT:")
-                        appendLine(stdout.trim())
-                    }
-                },
-                metadata = mapOf(
-                    "backend" to "termux",
-                    "stdout" to stdout,
-                    "stderr" to stderr,
-                    "exitCode" to returncode,
-                    "runtime" to resolvedRuntime,
-                    "working_dir" to (cwd ?: ""),
-                    "command" to (command ?: ""),
-                    "error" to error
-                )
-            )
+            }
         }
     }
+
+    private fun handleSetup(): ToolResult {
+        val reachable = isSSHReachable()
+        return ToolResult(
+            success = true,
+            content = buildString {
+                appendLine("🔧 Termux SSH Bridge Setup Status")
+                appendLine()
+                appendLine("Termux installed: ✅")
+                appendLine("SSH reachable (localhost:$SSH_PORT): ${if (reachable) "✅" else "❌"}")
+                appendLine()
+                if (!reachable) {
+                    appendLine("Setup steps:")
+                    appendLine("  1. Open Termux")
+                    appendLine("  2. pkg install openssh")
+                    appendLine("  3. passwd  (set a password)")
+                    appendLine("  4. sshd")
+                    appendLine("  5. whoami  (note your username, e.g. u0_a123)")
+                    appendLine()
+                    appendLine("Configure credentials:")
+                    appendLine("  echo '{\"user\":\"u0_aXXX\",\"password\":\"YOUR_PASS\"}' > $SSH_CONFIG_FILE")
+                } else {
+                    val config = loadSSHConfig()
+                    appendLine("SSH config: ${if (config.user.isNotEmpty()) "configured ✅" else "not configured ❌"}")
+                    if (config.user.isEmpty()) {
+                        appendLine()
+                        appendLine("Please configure credentials:")
+                        appendLine("  echo '{\"user\":\"YOUR_USER\",\"password\":\"YOUR_PASS\"}' > $SSH_CONFIG_FILE")
+                    }
+                }
+            }
+        )
+    }
+
+    data class SSHConfig(
+        val host: String = SSH_HOST,
+        val port: Int = SSH_PORT,
+        val user: String = "",
+        val password: String = "",
+        val keyFile: String = ""
+    )
+
+    data class SSHResult(
+        val success: Boolean,
+        val stdout: String,
+        val stderr: String,
+        val exitCode: Int
+    )
 }

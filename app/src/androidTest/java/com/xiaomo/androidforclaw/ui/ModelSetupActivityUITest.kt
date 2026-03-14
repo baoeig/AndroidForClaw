@@ -1,6 +1,7 @@
 package com.xiaomo.androidforclaw.ui
 
 import android.content.Intent
+import android.view.View
 import android.widget.AutoCompleteTextView
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
@@ -55,6 +56,37 @@ class ModelSetupActivityUITest {
     @After
     fun tearDown() {
         scenario?.close()
+    }
+
+    private fun expandAdvanced() {
+        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+    }
+
+    private fun selectProvider(chipId: Int) {
+        scenario!!.onActivity { activity ->
+            activity.findViewById<com.google.android.material.chip.Chip>(chipId).performClick()
+        }
+    }
+
+    private fun setApiKeyDirect(text: String) {
+        scenario!!.onActivity { activity ->
+            activity.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_setup_api_key)
+                .setText(text)
+        }
+    }
+
+    private fun setApiBaseDirect(text: String) {
+        scenario!!.onActivity { activity ->
+            activity.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_setup_api_base)
+                .setText(text)
+        }
+    }
+
+    private fun setModelDirect(text: String) {
+        scenario!!.onActivity { activity ->
+            activity.findViewById<AutoCompleteTextView>(R.id.act_model)
+                .setText(text, false)
+        }
     }
 
     // ==================== 1. 页面启动 & 基本元素 ====================
@@ -131,16 +163,16 @@ class ModelSetupActivityUITest {
     @Test
     fun test10_advancedToggleExpands() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
-        onView(withId(R.id.layout_advanced)).check(matches(isDisplayed()))
-        onView(withId(R.id.chip_group_provider)).check(matches(isDisplayed()))
+        expandAdvanced()
+        onView(withId(R.id.layout_advanced)).check(matches(withEffectiveVisibility(Visibility.VISIBLE)))
+        onView(withId(R.id.chip_group_provider)).check(matches(withEffectiveVisibility(Visibility.VISIBLE)))
     }
 
     @Test
     fun test11_advancedToggleCollapses() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
-        onView(withId(R.id.layout_advanced)).check(matches(isDisplayed()))
+        expandAdvanced()
+        onView(withId(R.id.layout_advanced)).check(matches(withEffectiveVisibility(Visibility.VISIBLE)))
 
         onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
         onView(withId(R.id.layout_advanced))
@@ -167,15 +199,15 @@ class ModelSetupActivityUITest {
     @Test
     fun test13_openrouterChipSelectedByDefault() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        expandAdvanced()
         onView(withId(R.id.chip_openrouter)).check(matches(isChecked()))
     }
 
     @Test
     fun test14_switchToAnthropic() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
-        onView(withId(R.id.chip_anthropic)).perform(scrollTo(), click())
+        expandAdvanced()
+        selectProvider(R.id.chip_anthropic)
 
         // Verify hint changes via the EditText's hint
         onView(withId(R.id.et_setup_api_key))
@@ -188,8 +220,8 @@ class ModelSetupActivityUITest {
     @Test
     fun test15_switchToOpenAI() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
-        onView(withId(R.id.chip_openai)).perform(scrollTo(), click())
+        expandAdvanced()
+        selectProvider(R.id.chip_openai)
 
         onView(withId(R.id.et_setup_api_key))
             .check(matches(withHint("OpenAI API Key")))
@@ -201,8 +233,8 @@ class ModelSetupActivityUITest {
     @Test
     fun test16_switchToCustom() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
-        onView(withId(R.id.chip_custom)).perform(scrollTo(), click())
+        expandAdvanced()
+        selectProvider(R.id.chip_custom)
 
         scenario!!.onActivity { activity ->
             val tilApiBase = activity.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.til_api_base)
@@ -215,8 +247,8 @@ class ModelSetupActivityUITest {
     @Test
     fun test17_collapseAdvancedResetsToOpenRouter() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
-        onView(withId(R.id.chip_anthropic)).perform(scrollTo(), click())
+        expandAdvanced()
+        selectProvider(R.id.chip_anthropic)
 
         // Collapse → reset
         onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
@@ -244,8 +276,7 @@ class ModelSetupActivityUITest {
     @Test
     fun test19_enterCustomKey() {
         val s = launchActivity(manual = true)
-        onView(withId(R.id.et_setup_api_key))
-            .perform(typeText("sk-or-v1-test123456"), closeSoftKeyboard())
+        setApiKeyDirect("sk-or-v1-test123456")
         onView(withId(R.id.et_setup_api_key))
             .check(matches(withText("sk-or-v1-test123456")))
         onView(withId(R.id.btn_start)).perform(click())
@@ -363,12 +394,11 @@ class ModelSetupActivityUITest {
     @Test
     fun test21_customProvider_baseUrlRequired() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
-        onView(withId(R.id.chip_custom)).perform(scrollTo(), click())
+        expandAdvanced()
+        selectProvider(R.id.chip_custom)
 
         // Enter key but no base URL
-        onView(withId(R.id.et_setup_api_key))
-            .perform(typeText("sk-test"), closeSoftKeyboard())
+        setApiKeyDirect("sk-test")
         onView(withId(R.id.btn_start)).perform(click())
 
         Thread.sleep(500)
@@ -382,12 +412,11 @@ class ModelSetupActivityUITest {
     @Test
     fun test22_customProvider_modelInputIsEditable() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
-        onView(withId(R.id.chip_custom)).perform(scrollTo(), click())
+        expandAdvanced()
+        selectProvider(R.id.chip_custom)
 
         // Model input should be freely editable
-        onView(withId(R.id.act_model))
-            .perform(clearText(), typeText("my-custom-model"), closeSoftKeyboard())
+        setModelDirect("my-custom-model")
         onView(withId(R.id.act_model))
             .check(matches(withText("my-custom-model")))
     }
@@ -395,17 +424,12 @@ class ModelSetupActivityUITest {
     @Test
     fun test23_customProvider_fillAllFields() {
         val s = launchActivity(manual = true)
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
-        onView(withId(R.id.chip_custom)).perform(scrollTo(), click())
+        expandAdvanced()
+        selectProvider(R.id.chip_custom)
 
-        scenario!!.onActivity { activity ->
-            activity.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_setup_api_key)
-                .setText("sk-my-key-123")
-            activity.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_setup_api_base)
-                .setText("http://localhost:8080/v1")
-            activity.findViewById<android.widget.AutoCompleteTextView>(R.id.act_model)
-                .setText("qwen2.5:7b", false)
-        }
+        setApiKeyDirect("sk-my-key-123")
+        setApiBaseDirect("http://localhost:8080/v1")
+        setModelDirect("qwen2.5:7b")
 
         onView(withId(R.id.btn_start)).perform(click())
         Thread.sleep(1000)
@@ -417,18 +441,17 @@ class ModelSetupActivityUITest {
     @Test
     fun test24_customProvider_modelInputBecomesVisible() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
-        onView(withId(R.id.chip_custom)).perform(scrollTo(), click())
-        onView(withId(R.id.til_model)).check(matches(isDisplayed()))
+        expandAdvanced()
+        selectProvider(R.id.chip_custom)
+        onView(withId(R.id.til_model)).check(matches(withEffectiveVisibility(Visibility.VISIBLE)))
     }
 
     @Test
     fun test25_customProvider_modelInputIsEditable() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
-        onView(withId(R.id.chip_custom)).perform(scrollTo(), click())
-        onView(withId(R.id.act_model))
-            .perform(clearText(), typeText("my-custom-model"), closeSoftKeyboard())
+        expandAdvanced()
+        selectProvider(R.id.chip_custom)
+        setModelDirect("my-custom-model")
         onView(withId(R.id.act_model))
             .check(matches(withText("my-custom-model")))
     }
@@ -438,28 +461,28 @@ class ModelSetupActivityUITest {
     @Test
     fun test27_providerHintShowsOnAdvanced() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
-        onView(withId(R.id.chip_anthropic)).perform(scrollTo(), click())
+        expandAdvanced()
+        selectProvider(R.id.chip_anthropic)
 
         onView(withId(R.id.tv_provider_hint))
-            .check(matches(isDisplayed()))
+            .check(matches(withEffectiveVisibility(Visibility.VISIBLE)))
             .check(matches(withText(containsString("Anthropic"))))
     }
 
     @Test
     fun test28_providerHintChangesOnSwitch() {
         launchActivity()
-        onView(withId(R.id.tv_advanced)).perform(scrollTo(), click())
+        expandAdvanced()
 
-        onView(withId(R.id.chip_anthropic)).perform(scrollTo(), click())
+        selectProvider(R.id.chip_anthropic)
         onView(withId(R.id.tv_provider_hint))
             .check(matches(withText(containsString("Anthropic"))))
 
-        onView(withId(R.id.chip_openai)).perform(scrollTo(), click())
+        selectProvider(R.id.chip_openai)
         onView(withId(R.id.tv_provider_hint))
             .check(matches(withText(containsString("OpenAI"))))
 
-        onView(withId(R.id.chip_custom)).perform(scrollTo(), click())
+        selectProvider(R.id.chip_custom)
         onView(withId(R.id.tv_provider_hint))
             .check(matches(withText(containsString("兼容"))))
     }
@@ -469,8 +492,7 @@ class ModelSetupActivityUITest {
     @Test
     fun test29_apiKeyInputIsPlainText() {
         launchActivity()
-        onView(withId(R.id.et_setup_api_key))
-            .perform(typeText("visible-key"), closeSoftKeyboard())
+        setApiKeyDirect("visible-key")
         onView(withId(R.id.et_setup_api_key))
             .check(matches(withText("visible-key")))
     }
