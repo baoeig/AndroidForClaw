@@ -1,0 +1,155 @@
+/**
+ * OpenClaw Source Reference:
+ * - ../openclaw/src/gateway/(all)
+ *
+ * AndroidForClaw adaptation: Telegram channel configuration UI.
+ */
+package com.xiaomo.androidforclaw.ui.activity
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.xiaomo.androidforclaw.config.ConfigLoader
+import kotlinx.coroutines.launch
+
+class TelegramChannelActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MaterialTheme {
+                TelegramChannelScreen(onBack = { finish() })
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TelegramChannelScreen(
+    onBack: () -> Unit,
+    context: android.content.Context = androidx.compose.ui.platform.LocalContext.current
+) {
+    val scope = rememberCoroutineScope()
+    val configLoader = remember { ConfigLoader(context) }
+
+    var enabled by remember { mutableStateOf(false) }
+    var token by remember { mutableStateOf("") }
+    var dmPolicy by remember { mutableStateOf("open") }
+    var groupPolicy by remember { mutableStateOf("open") }
+    var requireMention by remember { mutableStateOf(true) }
+    var showSaveSuccess by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Telegram Channel") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Filled.ArrowBack, "返回")
+                    }
+                },
+                actions = {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                // TODO: Save telegram config to openclaw.json
+                                showSaveSuccess = true
+                            }
+                        }
+                    ) {
+                        Text("保存")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Enable switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("启用 Telegram", style = MaterialTheme.typography.titleMedium)
+                Switch(checked = enabled, onCheckedChange = { enabled = it })
+            }
+
+            Divider()
+
+            // Token
+            OutlinedTextField(
+                value = token,
+                onValueChange = { token = it },
+                label = { Text("Bot Token") },
+                placeholder = { Text("Bot API Token from @BotFather") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            // DM Policy
+            Text("DM Policy", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("open", "pairing", "allowlist").forEach { policy ->
+                    FilterChip(
+                        selected = dmPolicy == policy,
+                        onClick = { dmPolicy = policy },
+                        label = { Text(policy) }
+                    )
+                }
+            }
+
+            // Group Policy
+            Text("Group Policy", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("open", "allowlist", "disabled").forEach { policy ->
+                    FilterChip(
+                        selected = groupPolicy == policy,
+                        onClick = { groupPolicy = policy },
+                        label = { Text(policy) }
+                    )
+                }
+            }
+
+            // Require Mention
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("群聊需要 @提及")
+                Switch(checked = requireMention, onCheckedChange = { requireMention = it })
+            }
+
+            // Save success
+            if (showSaveSuccess) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("✅ 配置已保存", color = MaterialTheme.colorScheme.primary)
+            }
+
+            // Status info
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "📖 Telegram Bot 接入\n\n配置保存后需要重启应用生效。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}

@@ -99,17 +99,54 @@ fun ChannelListScreen(onBack: () -> Unit) {
                 description = "Discord 服务器和私聊接入",
                 enabled = discordEnabled,
                 onClick = {
-                    // Navigate to Discord configuration page
                     val intent = Intent(context, DiscordChannelActivity::class.java)
                     context.startActivity(intent)
                 }
             )
 
-            // Future: can add more Channels
-            // - WhatsApp Channel
-            // - Telegram Channel
-            // - Web UI Channel
-            // - HTTP API Channel
+            // Telegram Channel card
+            ChannelCard(
+                name = "Telegram",
+                description = "Telegram Bot 接入",
+                enabled = false,
+                onClick = {
+                    val intent = Intent(context, TelegramChannelActivity::class.java)
+                    context.startActivity(intent)
+                }
+            )
+
+            // Slack Channel card
+            ChannelCard(
+                name = "Slack",
+                description = "Slack 工作区接入",
+                enabled = false,
+                onClick = {
+                    val intent = Intent(context, SlackChannelActivity::class.java)
+                    context.startActivity(intent)
+                }
+            )
+
+            // Signal Channel card
+            ChannelCard(
+                name = "Signal",
+                description = "Signal 消息接入",
+                enabled = false,
+                onClick = {
+                    val intent = Intent(context, SignalChannelActivity::class.java)
+                    context.startActivity(intent)
+                }
+            )
+
+            // WhatsApp Channel card
+            ChannelCard(
+                name = "WhatsApp",
+                description = "WhatsApp 消息接入",
+                enabled = false,
+                onClick = {
+                    val intent = Intent(context, WhatsAppChannelActivity::class.java)
+                    context.startActivity(intent)
+                }
+            )
         }
     }
 }

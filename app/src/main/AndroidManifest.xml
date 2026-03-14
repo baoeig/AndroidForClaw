@@ -169,6 +169,30 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
 
+        <activity
+            android:name="com.xiaomo.androidforclaw.ui.activity.TelegramChannelActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
+        <activity
+            android:name="com.xiaomo.androidforclaw.ui.activity.SlackChannelActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
+        <activity
+            android:name="com.xiaomo.androidforclaw.ui.activity.SignalChannelActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
+        <activity
+            android:name="com.xiaomo.androidforclaw.ui.activity.WhatsAppChannelActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+
         <!-- Feishu 连接测试页面 -->
         <activity
             android:name="com.xiaomo.androidforclaw.ui.activity.FeishuTestActivity"
