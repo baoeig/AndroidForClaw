@@ -6,6 +6,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
@@ -452,60 +455,80 @@ fun StatusTab(
 fun PermissionsCard(onClick: () -> Unit) {
     val context = LocalContext.current
 
-    // Use remember and LaunchedEffect to load permission status asynchronously
     var accessibility by remember { mutableStateOf(false) }
     var overlay by remember { mutableStateOf(false) }
     var screenCapture by remember { mutableStateOf(false) }
-
-    // Prevent duplicate connection attempts
     var isConnecting by remember { mutableStateOf(false) }
 
-    // Periodically refresh permission status (every 3 seconds)
+    suspend fun refreshPermissionState() {
+        withContext(Dispatchers.IO) {
+            try {
+                overlay = Settings.canDrawOverlays(context)
+                val proxy = com.xiaomo.androidforclaw.accessibility.AccessibilityProxy
+                val isConnected = proxy.isConnected.value ?: false
+                if (!isConnected && !isConnecting) {
+                    isConnecting = true
+                    proxy.bindService(context)
+                    delay(300)
+                    isConnecting = false
+                }
+                val ready = (proxy.isConnected.value == true) && proxy.isServiceReadyAsync()
+                accessibility = ready
+                screenCapture = if (ready) proxy.isMediaProjectionGranted() else false
+                Log.d("PermissionsCard", "Permission status: accessibility=$accessibility, overlay=$overlay, screenCapture=$screenCapture")
+            } catch (e: Exception) {
+                Log.e("PermissionsCard", "Error checking permissions", e)
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
-        while (true) {
-            // Check permissions in background thread
-            withContext(Dispatchers.IO) {
-                try {
-                    // Check overlay permission
-                    overlay = Settings.canDrawOverlays(context)
+        refreshPermissionState()
+    }
 
-                    // Check AccessibilityProxy real readiness (same standard used by main app execution path)
-                    screenCapture = try {
-                        val proxy = com.xiaomo.androidforclaw.accessibility.AccessibilityProxy
-
-                        // If connection is disconnected and not connecting, try to reconnect
-                        val isConnected = proxy.isConnected.value ?: false
-                        if (!isConnected && !isConnecting) {
-                            isConnecting = true
-                            Log.d("PermissionsCard", "AccessibilityProxy not connected, starting connection...")
-                            proxy.bindService(context)
-                            delay(500)
-                            isConnecting = false
-                        }
-
-                        val ready = (proxy.isConnected.value == true) && proxy.isServiceReadyAsync()
-                        accessibility = ready
-
-                        if (ready) {
-                            proxy.isMediaProjectionGranted()
-                        } else {
-                            false
-                        }
-                    } catch (e: Exception) {
-                        Log.e("PermissionsCard", "Failed to check screen capture permission", e)
-                        isConnecting = false
-                        accessibility = false
-                        false
-                    }
-
-                    Log.d("PermissionsCard", "Permission status: accessibility=$accessibility, overlay=$overlay, screenCapture=$screenCapture")
-                } catch (e: Exception) {
-                    Log.e("PermissionsCard", "Error checking permissions", e)
+    DisposableEffect(context) {
+        val accessibilityObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                super.onChange(selfChange)
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                    refreshPermissionState()
                 }
             }
+        }
 
-            // Refresh every 3 seconds
-            delay(3000)
+        val overlayObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                super.onChange(selfChange)
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                    refreshPermissionState()
+                }
+            }
+        }
+
+        context.contentResolver.registerContentObserver(
+            Settings.Secure.getUriFor(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES),
+            false,
+            accessibilityObserver
+        )
+        context.contentResolver.registerContentObserver(
+            Settings.Secure.getUriFor(Settings.Secure.ACCESSIBILITY_ENABLED),
+            false,
+            accessibilityObserver
+        )
+        context.contentResolver.registerContentObserver(
+            Settings.Secure.getUriFor("enabled_accessibility_services"),
+            false,
+            accessibilityObserver
+        )
+        context.contentResolver.registerContentObserver(
+            Settings.canDrawOverlays(context).let { Settings.System.CONTENT_URI },
+            true,
+            overlayObserver
+        )
+
+        onDispose {
+            context.contentResolver.unregisterContentObserver(accessibilityObserver)
+            context.contentResolver.unregisterContentObserver(overlayObserver)
         }
     }
 
