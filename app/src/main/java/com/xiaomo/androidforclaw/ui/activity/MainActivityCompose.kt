@@ -509,8 +509,26 @@ fun PermissionsCard(onClick: () -> Unit) {
         }
     }
 
+    // Refresh on initial composition
     LaunchedEffect(Unit) {
         refreshPermissionState()
+    }
+
+    // Refresh every time the activity resumes (e.g. returning from system settings)
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                    Log.d("PermissionsCard", "ON_RESUME: refreshing permission state")
+                    refreshPermissionState()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     DisposableEffect(context) {
