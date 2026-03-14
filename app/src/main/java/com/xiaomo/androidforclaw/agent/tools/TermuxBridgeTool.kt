@@ -11,8 +11,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import net.schmizz.sshj.SSHClient
+import net.schmizz.sshj.DefaultConfig
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
 import java.io.IOException
+import java.security.Security
 import java.util.concurrent.TimeUnit
 
 /**
@@ -143,7 +145,17 @@ class TermuxBridgeTool(private val context: Context) : Tool {
      * Create and connect SSH client
      */
     private fun createSSHClient(config: SSHConfig): SSHClient {
-        val client = SSHClient()
+        // Ensure BouncyCastle is registered as highest priority provider
+        // This fixes "no such algorithm: X25519 for provider BC" on Android
+        try {
+            val bcProvider = org.bouncycastle.jce.provider.BouncyCastleProvider()
+            Security.removeProvider(bcProvider.name)
+            Security.insertProviderAt(bcProvider, 1)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to register BouncyCastle: ${e.message}")
+        }
+
+        val client = SSHClient(DefaultConfig())
         client.addHostKeyVerifier(PromiscuousVerifier()) // localhost, safe to skip verification
         client.connectTimeout = 10_000
         client.connect(config.host, config.port)
