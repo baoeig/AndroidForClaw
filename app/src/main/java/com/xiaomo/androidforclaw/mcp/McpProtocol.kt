@@ -1,3 +1,9 @@
+/**
+ * OpenClaw Source Reference:
+ * - ../openclaw/src/agents/tools/mcp/(all)
+ *
+ * AndroidForClaw adaptation: MCP client integration.
+ */
 package com.xiaomo.androidforclaw.mcp
 
 import org.json.JSONArray

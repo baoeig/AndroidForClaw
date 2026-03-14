@@ -1,3 +1,9 @@
+/**
+ * OpenClaw Source Reference:
+ * - ../openclaw/src/config/(all)
+ *
+ * AndroidForClaw adaptation: workspace initialization.
+ */
 package com.xiaomo.androidforclaw.workspace
 
 import android.content.Context

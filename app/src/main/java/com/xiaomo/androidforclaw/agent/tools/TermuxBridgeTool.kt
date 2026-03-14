@@ -1,3 +1,9 @@
+/**
+ * OpenClaw Source Reference:
+ * - ../openclaw/src/agents/tools/(all)
+ *
+ * AndroidForClaw adaptation: Termux exec bridge.
+ */
 package com.xiaomo.androidforclaw.agent.tools
 
 import android.content.Context
