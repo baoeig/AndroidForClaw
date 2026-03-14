@@ -29,10 +29,12 @@ class ModelSetupActivity : AppCompatActivity() {
 
         fun isNeeded(context: android.content.Context): Boolean {
             try {
-                val mmkv = com.tencent.mmkv.MMKV.defaultMMKV()
-                if (mmkv.decodeBool("model_setup_completed", false)) {
-                    return false
+                val configFile = java.io.File("/sdcard/.androidforclaw/openclaw.json")
+                if (!configFile.exists() || configFile.length() == 0L) {
+                    Log.i(TAG, "openclaw.json missing, model setup is needed")
+                    return true
                 }
+
                 val configLoader = ConfigLoader(context)
                 val config = configLoader.loadOpenClawConfig()
                 val providers = config.resolveProviders()
