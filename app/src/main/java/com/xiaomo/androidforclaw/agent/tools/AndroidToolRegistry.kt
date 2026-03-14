@@ -50,44 +50,24 @@ class AndroidToolRegistry(
      * Register Android platform-specific tools
      */
     private fun registerAndroidTools() {
-        // === Observation tools (Observation) ===
-        register(GetViewTreeSkill(context))  // Get UI tree (lightweight)
-        register(ScreenshotSkill(context))   // Screenshot (complete)
+        // === Unified device tool (Playwright-aligned) ===
+        // Single entry point for ALL screen operations via ref-based interaction
+        // Replaces: screenshot, get_view_tree, tap, swipe, type, long_press, home, back, open_app, wait
+        register(DeviceToolSkillAdapter(context))
 
-        // === Interaction tools (Interaction) ===
-        register(TapSkill())                 // Tap
-        register(SwipeSkill())               // Swipe
-        register(TypeSkill(context))         // Type (via Accessibility)
-        register(AdbImeInputSkill(context))  // Type (via AdbIME)
-        register(LongPressSkill())           // Long press
-
-        // === Navigation tools (Navigation) ===
-        register(HomeSkill())                // Go to home
-        register(BackSkill())                // Go back
-        register(OpenAppSkill(context))      // Open app
-
-        // === App management tools (App Management) ===
+        // === App management tools ===
         register(ListInstalledAppsSkill(context))  // List apps
         register(InstallAppSkill(context))         // Install APK
         register(StartActivityTool(context))       // Start Activity
 
-        // === Control tools (Control) ===
-        register(WaitSkill())                // Wait
+        // === Control tools ===
         register(StopSkill(taskDataManager)) // Stop
         register(LogSkill())                 // Log
 
-        // === Browser tools (Browser) ===
-        // Note: browser tool uses BrowserForClaw (Android app), platform-specific
-        register(com.xiaomo.androidforclaw.agent.skills.BrowserForClawSkill(context))
-
-        // === Feishu tools (Feishu) ===
+        // === Feishu image (kept as direct tool — media upload needs special handling) ===
         register(FeishuSendImageSkill(context))
 
-        // === Unified device tool (Playwright-aligned) ===
-        // Single entry point for all screen operations via ref-based interaction
-        register(DeviceToolSkillAdapter(context))
-
-        Log.d(TAG, "✅ Registered ${tools.size} Android platform tools (incl. device)")
+        Log.d(TAG, "✅ Registered ${tools.size} Android platform tools")
     }
 
     /**

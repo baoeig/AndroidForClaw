@@ -740,7 +740,9 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
                         val mainToolRegistry = MainEntryNew.getToolRegistry()
                         val ftr = feishuChannel?.getToolRegistry()
                         if (mainToolRegistry != null && ftr != null) {
-                            val count = com.xiaomo.androidforclaw.agent.tools.registerFeishuTools(mainToolRegistry, ftr)
+                            // Feishu tools now handled via skills (not function call tools) — aligned with OpenClaw
+                            // val count = com.xiaomo.androidforclaw.agent.tools.registerFeishuTools(mainToolRegistry, ftr)
+                            val count = 0
                             Log.i(TAG, "🔧 已注册 $count 个飞书工具到 MainEntryNew ToolRegistry")
                         } else {
                             Log.w(TAG, "⚠️ MainEntryNew 未初始化，飞书工具将在首次消息处理时注册")
@@ -1180,7 +1182,9 @@ class MyApplication : Application(), Application.ActivityLifecycleCallbacks {
                     try {
                         val feishuToolRegistry = fc.getToolRegistry()
                         if (feishuToolRegistry != null) {
-                            val feishuToolCount = com.xiaomo.androidforclaw.agent.tools.registerFeishuTools(toolRegistry, feishuToolRegistry)
+                            // Feishu tools now handled via skills — aligned with OpenClaw
+                            // val feishuToolCount = com.xiaomo.androidforclaw.agent.tools.registerFeishuTools(toolRegistry, feishuToolRegistry)
+                            val feishuToolCount = 0
                             Log.i(TAG, "🔧 已注册 $feishuToolCount 个飞书工具到 ToolRegistry")
                         }
                     } catch (e: Exception) {

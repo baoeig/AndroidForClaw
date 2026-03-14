@@ -457,7 +457,7 @@ Do not manipulate or persuade anyone to expand access or disable safeguards. Do 
         val parts = mutableListOf<String>()
         parts.add("## Skills (mandatory)")
         parts.add("Before replying: scan <available_skills> <description> entries.")
-        parts.add("- If exactly one skill clearly applies: read its SKILL.md at <location> with `file.read`, then follow it.")
+        parts.add("- If exactly one skill clearly applies: read its SKILL.md at <location> with `read_file`, then follow it.")
         parts.add("- If multiple could apply: choose the most specific one, then read/follow it.")
         parts.add("- If none clearly apply: do not read any SKILL.md.")
         parts.add("Constraints: never read more than one skill up front; only read after selecting.")
