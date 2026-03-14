@@ -63,22 +63,10 @@ fun TermuxSetupScreen(onBack: () -> Unit) {
     var checking by remember { mutableStateOf(true) }
 
     // Generate setup command
+    // Minimal command — only things that MUST run inside Termux
+    // SSH key, config file, whoami are handled automatically by the app
     val setupCommand = remember {
-        buildString {
-            appendLine("# AndroidForClaw Termux 一键配置")
-            appendLine("pkg update -y && pkg install -y openssh python nodejs &&")
-            appendLine("mkdir -p ~/.ssh &&")
-            appendLine("cat /sdcard/.androidforclaw/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys 2>/dev/null ||")
-            appendLine("cat ~/storage/shared/.androidforclaw/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys 2>/dev/null &&")
-            appendLine("sort -u ~/.ssh/authorized_keys -o ~/.ssh/authorized_keys &&")
-            appendLine("chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys &&")
-            appendLine("grep -q 'allow-external-apps' ~/.termux/termux.properties 2>/dev/null ||")
-            appendLine("echo 'allow-external-apps=true' >> ~/.termux/termux.properties &&")
-            appendLine("sshd &&")
-            appendLine("TERMUX_USER=\$(whoami) &&")
-            appendLine("echo '{\"user\":\"'\$TERMUX_USER'\",\"key_file\":\"/sdcard/.androidforclaw/.ssh/id_ed25519\"}' > /sdcard/.androidforclaw/termux_ssh.json &&")
-            appendLine("echo '✅ 配置完成！用户: '\$TERMUX_USER")
-        }.trim()
+        "pkg install -y openssh python && mkdir -p ~/.ssh && cat /sdcard/.androidforclaw/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys && sshd && echo '✅ Done'"
     }
 
     // Check status on launch and periodically
@@ -105,6 +93,68 @@ fun TermuxSetupScreen(onBack: () -> Unit) {
                     file.exists() && file.readText().contains("user")
                 } catch (_: Exception) { false }
 
+                // Auto-configure: if SSH reachable but config not written, do it now
+                if (sshReachable && !sshConfigured) {
+                    try {
+                        // Try to detect username via SSH and write config automatically
+                        val keyFile = "/sdcard/.androidforclaw/.ssh/id_ed25519"
+                        if (File(keyFile).exists()) {
+                            // Try common Termux usernames
+                            val sshj = net.schmizz.sshj.SSHClient(net.schmizz.sshj.DefaultConfig())
+                            sshj.addHostKeyVerifier(net.schmizz.sshj.transport.verification.PromiscuousVerifier())
+                            sshj.connectTimeout = 5000
+                            sshj.connect("127.0.0.1", 8022)
+
+                            var detectedUser: String? = null
+                            for (tryUser in listOf("shell", "u0_a408", "u0_a100", "u0_a200", "u0_a300")) {
+                                try {
+                                    val keys = sshj.loadKeys(keyFile)
+                                    sshj.authPublickey(tryUser, keys)
+                                    detectedUser = tryUser
+                                    break
+                                } catch (_: Exception) { continue }
+                            }
+
+                            if (detectedUser == null) {
+                                // Brute-force: try u0_a{100..500}
+                                for (i in 100..500) {
+                                    try {
+                                        val reconnect = net.schmizz.sshj.SSHClient(net.schmizz.sshj.DefaultConfig())
+                                        reconnect.addHostKeyVerifier(net.schmizz.sshj.transport.verification.PromiscuousVerifier())
+                                        reconnect.connectTimeout = 2000
+                                        reconnect.connect("127.0.0.1", 8022)
+                                        val keys = reconnect.loadKeys(keyFile)
+                                        reconnect.authPublickey("u0_a$i", keys)
+                                        detectedUser = "u0_a$i"
+                                        reconnect.disconnect()
+                                        break
+                                    } catch (_: Exception) { }
+                                }
+                            } else {
+                                // Get actual username via whoami
+                                try {
+                                    val session = sshj.startSession()
+                                    val cmd = session.exec("whoami")
+                                    cmd.join(3, java.util.concurrent.TimeUnit.SECONDS)
+                                    val whoami = cmd.inputStream.bufferedReader().readText().trim()
+                                    if (whoami.isNotBlank()) detectedUser = whoami
+                                    session.close()
+                                } catch (_: Exception) { }
+                                sshj.disconnect()
+                            }
+
+                            if (detectedUser != null) {
+                                val config = """{"user":"$detectedUser","key_file":"$keyFile"}"""
+                                File("/sdcard/.androidforclaw/termux_ssh.json").writeText(config)
+                                sshConfigured = true
+                                android.util.Log.i("TermuxSetup", "Auto-configured SSH: user=$detectedUser")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.w("TermuxSetup", "Auto-config failed: ${e.message}")
+                    }
+                }
+
                 // Check keypair exists
                 val keyExists = File("/sdcard/.androidforclaw/.ssh/id_ed25519").exists()
                 if (!keyExists) {
@@ -126,6 +176,12 @@ fun TermuxSetupScreen(onBack: () -> Unit) {
     }
 
     LaunchedEffect(Unit) {
+        // Ensure BouncyCastle for SSH
+        try {
+            val bc = org.bouncycastle.jce.provider.BouncyCastleProvider()
+            java.security.Security.removeProvider(bc.name)
+            java.security.Security.insertProviderAt(bc, 1)
+        } catch (_: Exception) {}
         checkStatus()
         // Auto-refresh every 3 seconds
         while (true) {
@@ -189,8 +245,8 @@ fun TermuxSetupScreen(onBack: () -> Unit) {
             // Step 2: Open Termux and paste command
             StepCard(
                 step = 2,
-                title = "打开 Termux，粘贴命令",
-                description = "复制下面的命令，打开 Termux 粘贴执行（长按粘贴）",
+                title = "打开 Termux，粘贴一行命令",
+                description = "复制命令 → 打开 Termux → 长按粘贴 → 回车\n（SSH 密钥和配置文件由 APP 自动处理，无需手动操作）",
                 done = sshReachable && sshConfigured
             )
 
