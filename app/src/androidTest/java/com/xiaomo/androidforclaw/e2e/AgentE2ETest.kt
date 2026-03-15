@@ -41,7 +41,7 @@ class AgentE2ETest {
 
     companion object {
         private const val TIMEOUT = 5000L
-        private const val PACKAGE_NAME = "com.xiaomo.androidforclaw.debug"
+        private const val PACKAGE_NAME = "com.xiaomo.androidforclaw"
     }
 
     @Before

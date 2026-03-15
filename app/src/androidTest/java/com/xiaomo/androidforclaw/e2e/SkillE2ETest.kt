@@ -43,7 +43,7 @@ class SkillE2ETest {
 
     companion object {
         private const val TIMEOUT = 5000L
-        private const val PACKAGE_NAME = "com.xiaomo.androidforclaw.debug"
+        private const val PACKAGE_NAME = "com.xiaomo.androidforclaw"
 
         // 静态变量,在所有测试间共享
         lateinit var device: UiDevice

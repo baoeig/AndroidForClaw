@@ -45,7 +45,7 @@ class FloatingWindowUITest {
     fun testFloatingWindow_canDisplay() {
         // 启动应用
         val intent = context.packageManager.getLaunchIntentForPackage(
-            "com.xiaomo.androidforclaw.debug"
+            "com.xiaomo.androidforclaw"
         )?.apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
         }
@@ -53,10 +53,10 @@ class FloatingWindowUITest {
         context.startActivity(intent)
 
         // 等待应用启动
-        device.wait(Until.hasObject(By.pkg("com.xiaomo.androidforclaw.debug")), 5000)
+        device.wait(Until.hasObject(By.pkg("com.xiaomo.androidforclaw")), 5000)
 
         // 验证应用已启动
-        val app = device.findObject(By.pkg("com.xiaomo.androidforclaw.debug"))
+        val app = device.findObject(By.pkg("com.xiaomo.androidforclaw"))
         assertNotNull("应用应该已启动", app)
     }
 
@@ -77,9 +77,9 @@ class FloatingWindowUITest {
         launchApp()
 
         // 验证应用仍然正常
-        device.wait(Until.hasObject(By.pkg("com.xiaomo.androidforclaw.debug")), 3000)
+        device.wait(Until.hasObject(By.pkg("com.xiaomo.androidforclaw")), 3000)
 
-        val app = device.findObject(By.pkg("com.xiaomo.androidforclaw.debug"))
+        val app = device.findObject(By.pkg("com.xiaomo.androidforclaw"))
         assertNotNull("应用应该仍然可用", app)
     }
 
@@ -119,7 +119,7 @@ class FloatingWindowUITest {
             Thread.sleep(1000)
 
             // 验证应用仍然可见
-            val app = device.findObject(By.pkg("com.xiaomo.androidforclaw.debug"))
+            val app = device.findObject(By.pkg("com.xiaomo.androidforclaw"))
             assertNotNull("旋转后应用应该仍然可见", app)
 
             // 恢复原方向
@@ -153,19 +153,19 @@ class FloatingWindowUITest {
         Thread.sleep(1000)
 
         // 验证应用仍然正常
-        val app = device.findObject(By.pkg("com.xiaomo.androidforclaw.debug"))
+        val app = device.findObject(By.pkg("com.xiaomo.androidforclaw"))
         assertNotNull("应用切换后应该仍然可用", app)
     }
 
     private fun launchApp() {
         val intent = context.packageManager.getLaunchIntentForPackage(
-            "com.xiaomo.androidforclaw.debug"
+            "com.xiaomo.androidforclaw"
         )?.apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
         }
 
         context.startActivity(intent)
-        device.wait(Until.hasObject(By.pkg("com.xiaomo.androidforclaw.debug")), 5000)
+        device.wait(Until.hasObject(By.pkg("com.xiaomo.androidforclaw")), 5000)
         device.waitForIdle()
     }
 }

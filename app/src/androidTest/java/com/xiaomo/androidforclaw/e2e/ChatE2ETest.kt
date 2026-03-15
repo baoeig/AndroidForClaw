@@ -42,7 +42,7 @@ class ChatE2ETest {
     companion object {
         private const val TIMEOUT = 10000L
         private const val AI_RESPONSE_TIMEOUT = 15000L // AI响应超时时间
-        private const val PACKAGE_NAME = "com.xiaomo.androidforclaw.debug"
+        private const val PACKAGE_NAME = "com.xiaomo.androidforclaw"
 
         lateinit var device: UiDevice
         lateinit var context: Context

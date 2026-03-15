@@ -41,7 +41,7 @@ class RealUserE2ETest {
     companion object {
         private const val TIMEOUT = 10000L
         private const val LONG_TIMEOUT = 30000L
-        private const val PACKAGE_NAME = "com.xiaomo.androidforclaw.debug"
+        private const val PACKAGE_NAME = "com.xiaomo.androidforclaw"
     }
 
     @Before

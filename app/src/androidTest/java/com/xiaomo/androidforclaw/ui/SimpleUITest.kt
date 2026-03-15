@@ -113,7 +113,7 @@ class SimpleUITest {
     @Test
     fun testContextAvailable() {
         assertNotNull("Context 应该可用", context)
-        assertEquals("包名应该正确", "com.xiaomo.androidforclaw.debug", context.packageName)
+        assertEquals("包名应该正确", "com.xiaomo.androidforclaw", context.packageName)
     }
 
     private fun launchApp() {
