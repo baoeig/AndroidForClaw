@@ -9,7 +9,7 @@ package com.xiaomo.androidforclaw.gateway.protocol
 /**
  * Protocol version (aligned with OpenClaw)
  */
-const val PROTOCOL_VERSION = 45
+const val PROTOCOL_VERSION = 3
 
 /**
  * Base Frame type
@@ -20,7 +20,7 @@ sealed class Frame {
 
 /**
  * Request Frame - client to server RPC call
- * Aligned with OpenClaw Protocol v45
+ * Aligned with OpenClaw Protocol v3
  */
 data class RequestFrame(
     override val type: String = "req",  // OpenClaw uses "req" not "request"
@@ -32,7 +32,7 @@ data class RequestFrame(
 
 /**
  * Response Frame - server response to client request
- * Aligned with OpenClaw Protocol v45
+ * Aligned with OpenClaw Protocol v3
  */
 data class ResponseFrame(
     override val type: String = "res",  // OpenClaw uses "res" not "response"
@@ -44,7 +44,7 @@ data class ResponseFrame(
 
 /**
  * Event Frame - server to client event broadcast
- * Aligned with OpenClaw Protocol v45
+ * Aligned with OpenClaw Protocol v3
  */
 data class EventFrame(
     override val type: String = "event",
@@ -56,7 +56,7 @@ data class EventFrame(
 
 /**
  * Hello-Ok Frame - sent on connection establishment
- * Aligned with OpenClaw Protocol v45
+ * Aligned with OpenClaw Protocol v3
  */
 data class HelloOkFrame(
     override val type: String = "hello-ok",
@@ -87,14 +87,14 @@ data class Features(
  * Gateway policy configuration
  */
 data class Policy(
-    val maxPayload: Long = 10485760,  // 10MB
+    val maxPayload: Long = 26214400,  // 25MB (aligned with OpenClaw)
     val maxBufferedBytes: Long = 52428800,  // 50MB
-    val tickIntervalMs: Long = 5000  // 5 seconds
+    val tickIntervalMs: Long = 30000  // 30 seconds (aligned with OpenClaw)
 )
 
 /**
  * Error shape - structured error information
- * Aligned with OpenClaw Protocol v45
+ * Aligned with OpenClaw Protocol v3
  */
 data class ErrorShape(
     val code: String,  // Error code (e.g., "METHOD_NOT_FOUND", "INTERNAL_ERROR")

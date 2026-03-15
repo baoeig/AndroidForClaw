@@ -296,7 +296,7 @@ Instructions:
     }
 
     /**
-     * Broadcast event (OpenClaw Protocol v45: uses "payload" not "data")
+     * Broadcast event (OpenClaw Protocol v3: uses "payload" not "data")
      */
     private var eventSeq = 0L
 

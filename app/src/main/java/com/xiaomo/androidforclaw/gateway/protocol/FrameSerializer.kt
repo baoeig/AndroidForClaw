@@ -35,7 +35,7 @@ class FrameSerializer {
             ?: throw IllegalArgumentException("Missing 'type' field")
 
         return when (type) {
-            // OpenClaw Protocol v45 types
+            // OpenClaw Protocol v3 types
             "req" -> gson.fromJson(json, RequestFrame::class.java)
             "res" -> gson.fromJson(json, ResponseFrame::class.java)
             "event" -> gson.fromJson(json, EventFrame::class.java)

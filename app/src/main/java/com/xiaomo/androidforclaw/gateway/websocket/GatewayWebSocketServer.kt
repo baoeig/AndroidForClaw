@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Gateway WebSocket RPC Server
  *
- * Implements OpenClaw Protocol v45:
+ * Implements OpenClaw Protocol v3:
  * - Frame-based communication (Request/Response/Event)
  * - RPC method routing
  * - Connection management
@@ -37,7 +37,7 @@ class GatewayWebSocketServer(
 
     /**
      * Register an RPC method handler
-     * OpenClaw Protocol v45: handler accepts Any? params (not just Map)
+     * OpenClaw Protocol v3: handler accepts Any? params (not just Map)
      */
     fun registerMethod(method: String, handler: suspend (Any?) -> Any?) {
         handlers[method] = handler
@@ -100,7 +100,7 @@ class GatewayWebSocketServer(
 
             Log.i("GatewayWebSocketServer","WebSocket opened: $clientId")
 
-            // Send Hello-Ok frame (OpenClaw Protocol v45)
+            // Send Hello-Ok frame (OpenClaw Protocol v3)
             val hello = HelloOkFrame(
                 protocol = PROTOCOL_VERSION,
                 server = ServerInfo(
@@ -209,7 +209,7 @@ class GatewayWebSocketServer(
         }
 
         /**
-         * Send response frame (OpenClaw Protocol v45)
+         * Send response frame (OpenClaw Protocol v3)
          */
         private fun sendResponse(requestId: String, result: Any?) {
             val response = ResponseFrame(
@@ -222,7 +222,7 @@ class GatewayWebSocketServer(
         }
 
         /**
-         * Send error frame (OpenClaw Protocol v45)
+         * Send error frame (OpenClaw Protocol v3)
          */
         private fun sendError(message: String, requestId: String? = null, code: String = "INTERNAL_ERROR", retryable: Boolean? = null) {
             val response = ResponseFrame(

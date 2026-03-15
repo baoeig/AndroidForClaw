@@ -35,7 +35,7 @@ import org.json.JSONObject
 
 /**
  * Main Gateway controller that integrates all components:
- * - WebSocket RPC server (Protocol v45)
+ * - WebSocket RPC server (Protocol v3)
  * - Agent methods
  * - Session methods
  * - Health methods
@@ -346,7 +346,7 @@ class GatewayController(
     }
 
     // Helper methods to parse params
-    // OpenClaw Protocol v45: params is Any? (can be Map, List, primitive, etc.)
+    // OpenClaw Protocol v3: params is Any? (can be Map, List, primitive, etc.)
 
     @Suppress("UNCHECKED_CAST")
     private fun parseAgentParams(params: Any?): AgentParams {

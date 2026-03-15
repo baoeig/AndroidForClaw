@@ -75,7 +75,7 @@ class ContextBuilder(
         // Bootstrap file budget (aligned with OpenClaw bootstrap-budget.ts)
         private const val DEFAULT_BOOTSTRAP_MAX_CHARS = 20_000      // Per-file max chars
         private const val DEFAULT_BOOTSTRAP_TOTAL_MAX_CHARS = 150_000  // Total max chars
-        private const val MIN_BOOTSTRAP_FILE_BUDGET_CHARS = 200     // Minimum budget per file
+        private const val MIN_BOOTSTRAP_FILE_BUDGET_CHARS = 64      // Minimum budget per file (aligned with OpenClaw)
         private const val BOOTSTRAP_TAIL_RATIO = 0.2                // Keep 20% tail when truncating
 
         // Silent reply token (aligned with OpenClaw SILENT_REPLY_TOKEN = "NO_REPLY")
@@ -700,32 +700,19 @@ When you have nothing to say, respond with ONLY: $token
     private fun buildHeartbeatsSection(): String {
         // 从 workspace 读取 HEARTBEAT.md（如果存在）
         val heartbeatFile = File(workspaceDir, "HEARTBEAT.md")
-        val heartbeatPrompt = if (heartbeatFile.exists()) {
-            try {
-                heartbeatFile.readText().trim().lines().firstOrNull()?.trim() ?: "HEARTBEAT_CHECK"
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to read HEARTBEAT.md", e)
-                "HEARTBEAT_CHECK"
-            }
-        } else {
-            "HEARTBEAT_CHECK"
-        }
+        // Aligned with OpenClaw: heartbeat prompt is configured separately, not read from HEARTBEAT.md
+        // HEARTBEAT.md is injected as a bootstrap file; the prompt comes from config
+        // Default prompt matches OpenClaw's default
+        val heartbeatPrompt = "(configured)"
 
+        // Aligned with OpenClaw: compact heartbeat section, no examples block
         return """
 ## Heartbeats
-
 Heartbeat prompt: $heartbeatPrompt
-
 If you receive a heartbeat poll (a user message matching the heartbeat prompt above), and there is nothing that needs attention, reply exactly:
 HEARTBEAT_OK
-
 AndroidForClaw treats a leading/trailing "HEARTBEAT_OK" as a heartbeat ack (and may discard it).
-
 If something needs attention, do NOT include "HEARTBEAT_OK"; reply with the alert text instead.
-
-**Examples:**
-- User: "$heartbeatPrompt" → You: HEARTBEAT_OK (if all is well)
-- User: "$heartbeatPrompt" → You: "⚠️ Screenshot failed 3 times, accessibility service may be down" (if issue)
         """.trimIndent()
     }
 
