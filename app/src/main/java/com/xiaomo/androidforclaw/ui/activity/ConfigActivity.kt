@@ -17,6 +17,9 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.xiaomo.androidforclaw.config.ConfigLoader
+import com.xiaomo.androidforclaw.updater.AppUpdater
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.xiaomo.androidforclaw.util.AppConstants
 import com.draco.ladb.R
 import com.draco.ladb.databinding.ActivityConfigBinding
@@ -200,6 +203,55 @@ class ConfigActivity : AppCompatActivity() {
             // Channels management entry
             cardChannels.setOnClickListener {
                 startActivity(Intent(this@ConfigActivity, ChannelListActivity::class.java))
+            }
+
+            // Check update card
+            val updater = AppUpdater(this@ConfigActivity)
+            tvCurrentVersion.text = "当前版本: v${updater.getCurrentVersion()}"
+
+            cardUpdate.setOnClickListener {
+                Toast.makeText(this@ConfigActivity, "正在检查更新...", Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch {
+                    try {
+                        val info = updater.checkForUpdate()
+                        if (info.hasUpdate) {
+                            val sizeStr = if (info.fileSize > 0) "%.1f MB".format(info.fileSize / 1024.0 / 1024.0) else ""
+                            val message = buildString {
+                                append("当前版本: v${info.currentVersion}\n")
+                                append("最新版本: v${info.latestVersion}\n")
+                                if (sizeStr.isNotEmpty()) append("大小: $sizeStr\n")
+                                if (!info.releaseNotes.isNullOrEmpty()) {
+                                    append("\n${info.releaseNotes.take(300)}")
+                                }
+                            }
+                            androidx.appcompat.app.AlertDialog.Builder(this@ConfigActivity)
+                                .setTitle("发现新版本 v${info.latestVersion}")
+                                .setMessage(message)
+                                .setPositiveButton("立即更新") { _, _ ->
+                                    if (info.downloadUrl != null) {
+                                        Toast.makeText(this@ConfigActivity, "开始下载...", Toast.LENGTH_SHORT).show()
+                                        lifecycleScope.launch {
+                                            val ok = updater.downloadAndInstall(info.downloadUrl, info.latestVersion)
+                                            if (!ok) {
+                                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(info.releaseUrl)))
+                                            }
+                                        }
+                                    } else {
+                                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(info.releaseUrl)))
+                                    }
+                                }
+                                .setNeutralButton("在浏览器中打开") { _, _ ->
+                                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(info.releaseUrl)))
+                                }
+                                .setNegativeButton("取消", null)
+                                .show()
+                        } else {
+                            Toast.makeText(this@ConfigActivity, "已是最新版本 v${info.currentVersion}", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@ConfigActivity, "检查更新失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }
     }
