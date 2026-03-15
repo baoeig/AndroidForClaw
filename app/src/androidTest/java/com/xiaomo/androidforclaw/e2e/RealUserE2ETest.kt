@@ -98,7 +98,7 @@ class RealUserE2ETest {
         Thread.sleep(2000)
 
         val inputBox = findInputBox()
-        if (inputBox != null) {
+        if (inputBox != null && inputBox.exists()) {
             println("✓ 找到输入框")
 
             // 输入消息
